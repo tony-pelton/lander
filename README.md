@@ -50,9 +50,4 @@ If you want to extend the game, add new features, or just keep the vibes going, 
 
 ---
 
-## 📄 License
-MIT License (or your choice — just keep the vibes positive!)
-
----
-
 Happy landings! 🌙
