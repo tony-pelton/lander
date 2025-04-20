@@ -70,3 +70,11 @@ If you want to extend the game, add new features, or just keep the vibes going, 
 ---
 
 Happy landings! 🌙
+
+## 📸 Lander in Action
+
+Here’s a snapshot of the lunar lander in all its glory, running with Apollo-inspired physics:
+
+![Lunar Lander Screenshot](2025-04-20%2016-50-15.png)
+
+_Lunar module on final descent — powered by real Apollo numbers!_
