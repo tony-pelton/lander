@@ -111,15 +111,19 @@ public class Lander {
             // HUD
             GL11.glColor3f(1, 1, 1);
             GL11.glRasterPos2f(camX + 10, 30);
-            // No text rendering for simplicity (can be added with stb or another lib)
-            // Show fuel, velocity, status via System.out
+            
             if (lander.landed) {
-                System.out.println("LANDED! Press ESC to quit.");
+                String msg = "LANDED! Press ESC to quit.";
+                float textWidth = msg.length() * 16; // crude estimate, adjust as needed
+                float centerX = (SCREEN_WIDTH - textWidth) / 2f;
+                float centerY = SCREEN_HEIGHT / 2f;
+                drawString(msg, centerX, centerY);
             } else if (!lander.alive) {
-                System.out.println("CRASHED! Press ESC to quit.");
-            } else {
-                System.out.printf("Fuel: %.0f, Vx: %.2f, Vy: %.2f, Angle: %.1f\r", lander.fuel, lander.vx, lander.vy,
-                        lander.angle);
+                String msg = "CRASHED! Press ESC to quit.";
+                float textWidth = msg.length() * 16; // crude estimate, adjust as needed
+                float centerX = (SCREEN_WIDTH - textWidth) / 2f;
+                float centerY = SCREEN_HEIGHT / 2f;
+                drawString(msg, centerX, centerY);
             }
 
             // Swap buffers

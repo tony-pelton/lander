@@ -8,11 +8,16 @@ public class LanderState {
     public float x, y; // meters
     public float vx = 0, vy = 0;  // m/s
     public float angle = 0;       // degrees
-    public float fuel = 1000;     // arbitrary units
+    // Realistic mass/fuel
+    public final float dryMass = 8200f; // kg
+    public float fuelMass = 8200f;      // kg (full)
+    public float getTotalMass() { return dryMass + fuelMass; }
     public boolean alive = true;
     public boolean landed = false;
 
     public LanderState(float[] terrainHeights, float WORLD_WIDTH_M, float WORLD_HEIGHT_M, float LANDER_WIDTH_M, float LANDER_HEIGHT_M, float LANDER_HALF_W, float LANDER_HALF_H) {
+        this.fuelMass = 8200f; // Reset to full at start
+
         // Random horizontal position
         x = (float)(Math.random() * (WORLD_WIDTH_M - LANDER_WIDTH_M)) + LANDER_HALF_W;
         // Terrain sample index for x

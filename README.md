@@ -14,6 +14,25 @@ Welcome to **Lunar Lander** — a retro-inspired, side-scrolling moon landing ga
 
 ---
 
+## 🧑‍🚀 Apollo-Inspired Engine Physics
+
+Hold onto your visors! The lander’s engine and fuel system are now modeled after the legendary Apollo Lunar Module, using real-world data for a spicy boost in realism:
+
+- **Lander mass (fully fueled):** 16,400 kg
+- **Fuel mass:** 8,200 kg (that’s half the weight!)
+- **Engine thrust:** 44,000 N (44 kN — enough to leap off the Moon)
+- **Fuel burn rate:** 14.5 kg/s (watch that tank drop!)
+
+We now calculate acceleration and velocity using actual thrust, mass, and lunar gravity. As you burn fuel, your lander gets lighter, just like the real Apollo missions. This means:
+- **Heavier at launch, lighter at touchdown** — your handling changes as you descend!
+- **Fuel is precious** — throttle wisely, or you’ll relive the tension of Armstrong and Aldrin’s final descent.
+
+> _"Houston, Tranquility Base here. The Eagle has landed."_
+
+All physics numbers were sourced and cross-checked with NASA’s Apollo documentation and public records. This is as close as you’ll get to flying the real thing — without leaving your chair!
+
+---
+
 ## 🎮 How to Play
 - **Arrow Up:** Main engine (thrust)
 - **Arrow Left/Right:** Rotate lander

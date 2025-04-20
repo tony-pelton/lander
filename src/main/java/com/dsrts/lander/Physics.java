@@ -11,7 +11,8 @@ public class Physics {
      * @param dt Time step in seconds
      */
     public static final float GRAVITY = 1.62f; // m/s^2 (moon gravity)
-    public static final float THRUST_POWER = 10.0f; // m/s^2 (main engine)
+    public static final float ENGINE_THRUST = 44000f; // Newtons
+    public static final float FUEL_BURN_RATE = 14.5f; // kg/s
     public static final float ROTATE_SPEED = 2f; // deg/frame
     public static final float SIDE_THRUST = 2.5f; // m/s^2 (side jets)
 
@@ -20,21 +21,32 @@ public class Physics {
         if (lander.left) lander.angle -= ROTATE_SPEED;  // rotate counter-clockwise
         if (lander.right) lander.angle += ROTATE_SPEED; // rotate clockwise
         // Thrust (main engine)
-        if (lander.up && lander.fuel > 0) { // Use THRUST_POWER
-            // At 0 degrees, tip points up, so thrust should push down
+        if (lander.up && lander.fuelMass > 0) {
             float rad = (float)Math.toRadians(lander.angle);
-            // At 0 degrees (pointing up): sin=0, cos=1 -> (0,1) pushing down
-            // At 90 degrees (pointing right): sin=1, cos=0 -> (1,0) pushing right
-            float ax = (float)Math.sin(rad) * THRUST_POWER;
-            float ay = (float)Math.cos(rad) * THRUST_POWER;
+            float mass = lander.getTotalMass();
+            float thrust = ENGINE_THRUST;
+            // Calculate acceleration from thrust (F = ma)
+            float ax = (float)Math.sin(rad) * thrust / mass;
+            float ay = (float)Math.cos(rad) * thrust / mass;
             lander.vx += ax * dt;
             lander.vy += ay * dt;
-            lander.fuel -= 1*dt;
+            // Burn fuel
+            float fuelUsed = FUEL_BURN_RATE * (float)dt;
+            lander.fuelMass -= fuelUsed;
+            if (lander.fuelMass < 0) lander.fuelMass = 0;
         }
         // Side thrust (with left/right + space)
-        if (lander.space && lander.fuel > 0) {
-            if (lander.left) { lander.vx -= SIDE_THRUST * dt; lander.fuel -= 0.5*dt; }
-            if (lander.right) { lander.vx += SIDE_THRUST * dt; lander.fuel -= 0.5*dt; }
+        if (lander.space && lander.fuelMass > 0) {
+            if (lander.left) {
+                lander.vx -= SIDE_THRUST * dt;
+                // Optional: burn a small amount of fuel for side jets
+                lander.fuelMass -= 0.5f * FUEL_BURN_RATE * (float)dt;
+            }
+            if (lander.right) {
+                lander.vx += SIDE_THRUST * dt;
+                lander.fuelMass -= 0.5f * FUEL_BURN_RATE * (float)dt;
+            }
+            if (lander.fuelMass < 0) lander.fuelMass = 0;
         }
         // Gravity (pulls down)
         lander.vy -= GRAVITY * dt;

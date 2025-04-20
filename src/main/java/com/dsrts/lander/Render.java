@@ -51,8 +51,8 @@ public class Render {
         GL11.glLoadIdentity();
         GL11.glColor3f(1, 1, 1); // White text
         // Format text with 1 decimal place
-        String hudText = String.format("Fuel: %.0f\nVx: %.1f m/s\nVy: %.1f m/s",
-                lander.fuel,
+        String hudText = String.format("Fuel: %.0f kg\nVx: %.1f m/s\nVy: %.1f m/s",
+                lander.fuelMass,
                 lander.vx,
                 lander.vy);
         // Draw each line of text
@@ -78,26 +78,65 @@ public class Render {
             GL11.glColor3f(0, 1, 0);
         else
             GL11.glColor3f(1, 1, 1);
-        // Draw triangle: base at bottom, tip at top (isosceles)
+        // Draw main lander body (rectangle)
+        float bodyW = Lander.LANDER_HALF_W * 1.2f * Lander.PIXELS_PER_METER_X;
+        float bodyH = Lander.LANDER_HALF_H * 0.9f * Lander.PIXELS_PER_METER_Y;
         GL11.glBegin(GL11.GL_LINE_LOOP);
-        // Top vertex (tip)
-        GL11.glVertex2f(0, -Lander.LANDER_HALF_H * Lander.PIXELS_PER_METER_Y);
-        // Bottom right
-        GL11.glVertex2f(Lander.LANDER_HALF_W * Lander.PIXELS_PER_METER_X, Lander.LANDER_HALF_H * Lander.PIXELS_PER_METER_Y);
-        // Bottom left
-        GL11.glVertex2f(-Lander.LANDER_HALF_W * Lander.PIXELS_PER_METER_X, Lander.LANDER_HALF_H * Lander.PIXELS_PER_METER_Y);
+        GL11.glVertex2f(-bodyW, -bodyH * 0.5f);
+        GL11.glVertex2f(bodyW, -bodyH * 0.5f);
+        GL11.glVertex2f(bodyW, bodyH * 0.5f);
+        GL11.glVertex2f(-bodyW, bodyH * 0.5f);
+        GL11.glEnd();
+
+        // Draw capsule/cab (octagon on top), flat bottom edge aligns with body top
+        float cabRadius = bodyW * 0.5f;
+        float bodyTopY = -bodyH * 0.5f;
+        int cabSegments = 8;
+        float[] octX = new float[cabSegments];
+        float[] octY = new float[cabSegments];
+        // The angle for the first point (flat bottom) is -PI/8, so the flat edge is parallel to X axis
+        double theta0 = -Math.PI / 8;
+        for (int i = 0; i < cabSegments; i++) {
+            double theta = theta0 + 2.0 * Math.PI * i / cabSegments;
+            octX[i] = (float) (cabRadius * Math.cos(theta));
+            octY[i] = (float) (cabRadius * Math.sin(theta));
+        }
+        // The cab's center should be above the body's top edge by cabRadius * cos(PI/8)
+        float cabCenterY = bodyTopY - cabRadius * (float)Math.cos(Math.PI/8);
+        // Draw octagon
+        GL11.glBegin(GL11.GL_LINE_LOOP);
+        for (int i = 0; i < cabSegments; i++) {
+            GL11.glVertex2f(octX[i], octY[i] + cabCenterY);
+        }
+        GL11.glEnd();
+
+        // Draw four legs (lines from corners)
+        float legLen = bodyH * 1.2f;
+        float legSpread = bodyW * 0.8f;
+        float baseY = bodyH * 0.5f;
+        float legAngle = (float) Math.toRadians(30);
+        // Left leg
+        GL11.glBegin(GL11.GL_LINES);
+        GL11.glVertex2f(-legSpread, baseY);
+        GL11.glVertex2f(-legSpread - legLen * (float)Math.sin(legAngle), baseY + legLen * (float)Math.cos(legAngle));
+        // Right leg
+        GL11.glVertex2f(legSpread, baseY);
+        GL11.glVertex2f(legSpread + legLen * (float)Math.sin(legAngle), baseY + legLen * (float)Math.cos(legAngle));
+        // Back left leg
+        GL11.glVertex2f(-legSpread * 0.6f, baseY);
+        GL11.glVertex2f(-legSpread * 0.6f - legLen * 0.5f * (float)Math.sin(legAngle), baseY + legLen * 0.7f * (float)Math.cos(legAngle));
+        // Back right leg
+        GL11.glVertex2f(legSpread * 0.6f, baseY);
+        GL11.glVertex2f(legSpread * 0.6f + legLen * 0.5f * (float)Math.sin(legAngle), baseY + legLen * 0.7f * (float)Math.cos(legAngle));
         GL11.glEnd();
 
         // Draw thrust flame (if thrusting)
-        if (lander.fuel > 0 && lander.alive && !lander.landed && lander.up) {
+        if (lander.fuelMass > 0 && lander.alive && !lander.landed && lander.up) {
             GL11.glColor3f(1, 0.6f, 0);
             GL11.glBegin(GL11.GL_TRIANGLES);
-            GL11.glVertex2f(-Lander.LANDER_HALF_W * 0.4f * Lander.PIXELS_PER_METER_X,
-                    Lander.LANDER_HALF_H * Lander.PIXELS_PER_METER_Y);
-            GL11.glVertex2f(Lander.LANDER_HALF_W * 0.4f * Lander.PIXELS_PER_METER_X,
-                    Lander.LANDER_HALF_H * Lander.PIXELS_PER_METER_Y);
-            GL11.glVertex2f(0,
-                    (Lander.LANDER_HALF_H + 2 + (float) Math.random() * 2) * Lander.PIXELS_PER_METER_Y);
+            GL11.glVertex2f(-bodyW * 0.4f, baseY);
+            GL11.glVertex2f(bodyW * 0.4f, baseY);
+            GL11.glVertex2f(0, baseY + (legLen * 0.4f) + (float) Math.random() * 10);
             GL11.glEnd();
         }
         GL11.glPopMatrix();
