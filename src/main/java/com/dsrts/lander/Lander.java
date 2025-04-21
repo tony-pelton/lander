@@ -81,10 +81,23 @@ public class Lander {
             if (GLFW.glfwGetKey(window, GLFW.GLFW_KEY_ESCAPE) == GLFW.GLFW_PRESS) {
                 GLFW.glfwSetWindowShouldClose(window, true);
             }
-            lander.up = GLFW.glfwGetKey(window, GLFW.GLFW_KEY_UP) == GLFW.GLFW_PRESS;
+            boolean upPressed = GLFW.glfwGetKey(window, GLFW.GLFW_KEY_UP) == GLFW.GLFW_PRESS;
+            boolean downPressed = GLFW.glfwGetKey(window, GLFW.GLFW_KEY_DOWN) == GLFW.GLFW_PRESS;
             lander.left = GLFW.glfwGetKey(window, GLFW.GLFW_KEY_LEFT) == GLFW.GLFW_PRESS;
             lander.right = GLFW.glfwGetKey(window, GLFW.GLFW_KEY_RIGHT) == GLFW.GLFW_PRESS;
             lander.space = GLFW.glfwGetKey(window, GLFW.GLFW_KEY_SPACE) == GLFW.GLFW_PRESS;
+
+            // --- Throttle control ---
+            final float THROTTLE_CHANGE_RATE = 0.5f; // percent per second (0.5 = 50%/sec)
+            float throttleDelta = (float)(THROTTLE_CHANGE_RATE * accumulator); // accumulator is time since last physics update
+            if (upPressed) {
+                lander.throttle += throttleDelta;
+            }
+            if (downPressed) {
+                lander.throttle -= throttleDelta;
+            }
+            if (lander.throttle > 1.0f) lander.throttle = 1.0f;
+            if (lander.throttle < 0.0f) lander.throttle = 0.0f;
 
             // --- Physics (fixed timestep) ---
             long now = System.nanoTime();

@@ -28,6 +28,21 @@ public class Render {
         GL11.glMatrixMode(GL11.GL_MODELVIEW);
         GL11.glLoadIdentity();
 
+        // Draw distant objects (e.g., Earth)
+        Render.drawObjects();
+
+        // Draw terrain and landing pad
+        Render.renderTerrain();
+
+        // Draw HUD
+        Render.drawHud(lander);
+
+        // Draw lander (all parts, effects)
+        Render.renderLander(lander);
+    }
+
+    // Draws the terrain and landing pad
+    public static void renderTerrain() {
         // Draw terrain (white)
         GL11.glColor3f(1, 1, 1);
         GL11.glBegin(GL11.GL_LINE_STRIP);
@@ -45,14 +60,108 @@ public class Render {
                     Lander.SCREEN_HEIGHT - terrainHeights[i] * Lander.PIXELS_PER_METER_Y);
         }
         GL11.glEnd();
+    }
 
-        // Draw HUD
+    // Draws distant objects in the sky (e.g., Earth)
+    public static void drawObjects() {
+        // Draw distant Earth (high, right of center)
+        float earthRadius = 22f;
+        float earthX = Lander.SCREEN_WIDTH * 0.60f;
+        float earthY = 54f;
+        int numSegments = 40;
+        // Draw Earth circle
+        GL11.glColor3f(0.2f, 0.4f, 1.0f); // Earth blue
+        GL11.glBegin(GL11.GL_TRIANGLE_FAN);
+        GL11.glVertex2f(earthX, earthY);
+        for (int i = 0; i <= numSegments; i++) {
+            double theta = 2.0 * Math.PI * i / numSegments;
+            float dx = (float)Math.cos(theta) * earthRadius;
+            float dy = (float)Math.sin(theta) * earthRadius;
+            GL11.glVertex2f(earthX + dx, earthY + dy);
+        }
+        GL11.glEnd();
+        // Draw simple "continents" as green shapes
+        GL11.glColor3f(0.1f, 0.7f, 0.2f);
+        GL11.glBegin(GL11.GL_POLYGON);
+        GL11.glVertex2f(earthX + earthRadius * 0.2f, earthY - earthRadius * 0.1f);
+        GL11.glVertex2f(earthX + earthRadius * 0.4f, earthY - earthRadius * 0.4f);
+        GL11.glVertex2f(earthX + earthRadius * 0.1f, earthY - earthRadius * 0.5f);
+        GL11.glVertex2f(earthX - earthRadius * 0.1f, earthY - earthRadius * 0.3f);
+        GL11.glEnd();
+        GL11.glBegin(GL11.GL_POLYGON);
+        GL11.glVertex2f(earthX - earthRadius * 0.3f, earthY + earthRadius * 0.1f);
+        GL11.glVertex2f(earthX - earthRadius * 0.2f, earthY + earthRadius * 0.3f);
+        GL11.glVertex2f(earthX, earthY + earthRadius * 0.2f);
+        GL11.glVertex2f(earthX - earthRadius * 0.1f, earthY);
+        GL11.glEnd();
+    }
+
+    // Draws the HUD (fuel, throttle, velocities)
+    public static void drawHud(LanderState lander) {
+        // Draw vertical acceleration bar (left side, label above)
+        float barX = 50;
+        float barY = 50;
+        // Draw label above the bar
+        Lander.drawString("dVy", barX - 14, barY - 28);
+        float barWidth = 18;
+        float barHeight = 100;
+        float halfBar = barHeight / 2f;
+        // Compute vertical acceleration (rate of change of vy)
+        float verticalAccel = lander.verticalAccel;
+        // Clamp to [-5, 5] m/s^2
+        if (verticalAccel > 5) verticalAccel = 5;
+        if (verticalAccel < -5) verticalAccel = -5;
+        // Draw fixed white center line
+        float centerY = barY + halfBar;
+        GL11.glColor3f(1, 1, 1);
+        GL11.glLineWidth(3.0f);
+        GL11.glBegin(GL11.GL_LINES);
+        GL11.glVertex2f(barX - barWidth / 2 - 2, centerY);
+        GL11.glVertex2f(barX + barWidth / 2 + 2, centerY);
+        GL11.glEnd();
+        GL11.glLineWidth(1.0f);
+        // Draw white rectangle outline around the bar
+        GL11.glColor3f(1, 1, 1);
+        GL11.glBegin(GL11.GL_LINE_LOOP);
+        GL11.glVertex2f(barX - barWidth / 2, barY);
+        GL11.glVertex2f(barX + barWidth / 2, barY);
+        GL11.glVertex2f(barX + barWidth / 2, barY + barHeight);
+        GL11.glVertex2f(barX - barWidth / 2, barY + barHeight);
+        GL11.glEnd();
+        // Draw green fill for positive acceleration (up from center)
+        if (verticalAccel > 0.0f) {
+            float fillTop = centerY - (verticalAccel / 5.0f) * halfBar; // +5 m/s²: fillTop == barY
+            GL11.glColor3f(0, 1, 0);
+            GL11.glBegin(GL11.GL_QUADS);
+            GL11.glVertex2f(barX - barWidth / 2, fillTop);
+            GL11.glVertex2f(barX + barWidth / 2, fillTop);
+            GL11.glVertex2f(barX + barWidth / 2, centerY);
+            GL11.glVertex2f(barX - barWidth / 2, centerY);
+            GL11.glEnd();
+        }
+        // Draw red fill for negative acceleration (down from center)
+        if (verticalAccel < 0.0f) {
+            float fillBot = centerY - (verticalAccel / 5.0f) * halfBar; // -5 m/s²: fillBot == barY + barHeight
+            GL11.glColor3f(1, 0, 0);
+            GL11.glBegin(GL11.GL_QUADS);
+            GL11.glVertex2f(barX - barWidth / 2, centerY);
+            GL11.glVertex2f(barX + barWidth / 2, centerY);
+            GL11.glVertex2f(barX + barWidth / 2, fillBot);
+            GL11.glVertex2f(barX - barWidth / 2, fillBot);
+            GL11.glEnd();
+        }
+
+
+        // Draw label
+        // Lander.drawString("dVy", barX - 16, barY + barHeight + 18);
+
         GL11.glPushMatrix();
         GL11.glLoadIdentity();
         GL11.glColor3f(1, 1, 1); // White text
         // Format text with 1 decimal place
-        String hudText = String.format("Fuel: %.0f kg\nVx: %.1f m/s\nVy: %.1f m/s",
+        String hudText = String.format("Fuel: %.0f kg\nThrottle: %d%%\nVx: %.1f m/s\nVy: %.1f m/s",
                 lander.fuelMass,
+                Math.round(lander.throttle * 100),
                 lander.vx,
                 lander.vy);
         // Draw each line of text
@@ -64,8 +173,10 @@ public class Render {
             y += lineHeight;
         }
         GL11.glPopMatrix();
+    }
 
-        // Draw lander (5x5 meters)
+    // Renders the lander and its effects at its current position
+    public static void renderLander(LanderState lander) {
         GL11.glPushMatrix();
         float px = lander.x * Lander.PIXELS_PER_METER_X;
         float py = Lander.SCREEN_HEIGHT - lander.y * Lander.PIXELS_PER_METER_Y;
@@ -130,15 +241,47 @@ public class Render {
         GL11.glVertex2f(legSpread * 0.6f + legLen * 0.5f * (float)Math.sin(legAngle), baseY + legLen * 0.7f * (float)Math.cos(legAngle));
         GL11.glEnd();
 
-        // Draw thrust flame (if thrusting)
-        if (lander.fuelMass > 0 && lander.alive && !lander.landed && lander.up) {
+        // Draw thrust flame (if throttle > 0)
+        if (lander.fuelMass > 0 && lander.alive && !lander.landed && lander.throttle > 0.0f) {
             GL11.glColor3f(1, 0.6f, 0);
             GL11.glBegin(GL11.GL_TRIANGLES);
             GL11.glVertex2f(-bodyW * 0.4f, baseY);
             GL11.glVertex2f(bodyW * 0.4f, baseY);
-            GL11.glVertex2f(0, baseY + (legLen * 0.4f) + (float) Math.random() * 10);
+            // Scale flame height with throttle, add some flicker
+            float flameHeight = (legLen * 0.2f + lander.throttle * legLen * 0.6f) + (float) Math.random() * 8 * lander.throttle;
+            GL11.glVertex2f(0, baseY + flameHeight);
             GL11.glEnd();
         }
+
+        // Draw side thruster gas (white, semi-transparent, flickering)
+        if (lander.fuelMass > 0 && lander.alive && !lander.landed && lander.space) {
+            GL11.glEnable(GL11.GL_BLEND);
+            GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+            float gasLength = bodyW * 1.3f + (float)Math.random() * bodyW * 0.4f;
+            float gasWidth = bodyH * 0.3f + (float)Math.random() * bodyH * 0.2f;
+            float alpha = 0.55f + 0.25f * (float)Math.random();
+            // Left command (thrusts right): draw jet on right
+            if (lander.left) {
+                GL11.glColor4f(1f, 1f, 1f, alpha);
+                GL11.glBegin(GL11.GL_TRIANGLES);
+                GL11.glVertex2f(bodyW, 0);
+                GL11.glVertex2f(bodyW + gasLength, -gasWidth);
+                GL11.glVertex2f(bodyW + gasLength, gasWidth);
+                GL11.glEnd();
+            }
+            // Right command (thrusts left): draw jet on left
+            if (lander.right) {
+                GL11.glColor4f(1f, 1f, 1f, alpha);
+                GL11.glBegin(GL11.GL_TRIANGLES);
+                GL11.glVertex2f(-bodyW, 0);
+                GL11.glVertex2f(-bodyW - gasLength, -gasWidth);
+                GL11.glVertex2f(-bodyW - gasLength, gasWidth);
+                GL11.glEnd();
+            }
+            GL11.glDisable(GL11.GL_BLEND);
+        }
+
         GL11.glPopMatrix();
     }
 }
+

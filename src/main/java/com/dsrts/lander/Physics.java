@@ -17,21 +17,25 @@ public class Physics {
     public static final float SIDE_THRUST = 2.5f; // m/s^2 (side jets)
 
     public static void advance(LanderState lander, double dt) {
-        // Rotation (negative = clockwise in screen coordinates)
-        if (lander.left) lander.angle -= ROTATE_SPEED;  // rotate counter-clockwise
-        if (lander.right) lander.angle += ROTATE_SPEED; // rotate clockwise
-        // Thrust (main engine)
-        if (lander.up && lander.fuelMass > 0) {
+        // Track previous vy for vertical acceleration HUD
+        float prevVy = lander.vy;
+        // Only allow rotation if not using side thrusters and there's fuel
+        if (!lander.space && lander.fuelMass > 0) {
+            if (lander.left) lander.angle -= ROTATE_SPEED;  // rotate counter-clockwise
+            if (lander.right) lander.angle += ROTATE_SPEED; // rotate clockwise
+        }
+        // Thrust (main engine, now throttle-based)
+        if (lander.throttle > 0.0f && lander.fuelMass > 0) {
             float rad = (float)Math.toRadians(lander.angle);
             float mass = lander.getTotalMass();
-            float thrust = ENGINE_THRUST;
+            float thrust = ENGINE_THRUST * lander.throttle;
             // Calculate acceleration from thrust (F = ma)
             float ax = (float)Math.sin(rad) * thrust / mass;
             float ay = (float)Math.cos(rad) * thrust / mass;
             lander.vx += ax * dt;
             lander.vy += ay * dt;
-            // Burn fuel
-            float fuelUsed = FUEL_BURN_RATE * (float)dt;
+            // Burn fuel proportional to throttle
+            float fuelUsed = FUEL_BURN_RATE * lander.throttle * (float)dt;
             lander.fuelMass -= fuelUsed;
             if (lander.fuelMass < 0) lander.fuelMass = 0;
         }
@@ -53,5 +57,8 @@ public class Physics {
         // Update position
         lander.x += lander.vx * dt;
         lander.y += lander.vy * dt;
+        // Compute vertical acceleration (rate of change of vy)
+        lander.verticalAccel = (lander.vy - prevVy) / (float)dt;
+        lander.prevVy = prevVy;
     }
 }

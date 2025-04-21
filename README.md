@@ -34,12 +34,14 @@ All physics numbers were sourced and cross-checked with NASA’s Apollo document
 ---
 
 ## 🎮 How to Play
-- **Arrow Up:** Main engine (thrust)
-- **Arrow Left/Right:** Rotate lander
-- **Space:** Side jets (for fine control)
+- **Arrow Up:** Increase throttle (main engine power)
+- **Arrow Down:** Decrease throttle (main engine power)
+- **Throttle:** Ranges from 0% (off) to 100% (full thrust) — adjust smoothly for precise control!
+- **Arrow Left/Right:** Rotate lander (unless Space is held)
+- **Space + Left/Right:** Fire side jets for horizontal movement (no rotation)
 - **ESC:** Quit the game
 
-Land softly on the red pad in the middle of the screen. If you land too hard, or at a bad angle, you’ll crash! Your fuel is limited, so plan your descent!
+Land softly on the red pad in the middle of the screen. If you land too hard, or at a bad angle, you’ll crash! Your fuel is limited, so plan your descent and throttle carefully!
 
 ---
 
@@ -70,11 +72,3 @@ If you want to extend the game, add new features, or just keep the vibes going, 
 ---
 
 Happy landings! 🌙
-
-## 📸 Lander in Action
-
-Here’s a snapshot of the lunar lander in all its glory, running with Apollo-inspired physics:
-
-![Lunar Lander Screenshot](2025-04-20%2016-50-15.png)
-
-_Lunar module on final descent — powered by real Apollo numbers!_
