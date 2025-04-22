@@ -10,6 +10,7 @@ Welcome to **Lunar Lander** — a retro-inspired, side-scrolling moon landing ga
 - **Realistic physics** (gravity, thrust, rotation, and fuel)
 - **Procedurally generated terrain** with a flat landing pad
 - **Keyboard controls** for classic lunar lander gameplay
+- **Fly-by-wire mode**: toggle between manual and automatic control for a modern piloting experience
 - **No JOGL, no GLUT, no nonsense**
 
 ---
@@ -42,6 +43,21 @@ All physics numbers were sourced and cross-checked with NASA’s Apollo document
 - **ESC:** Quit the game
 
 Land softly on the red pad in the middle of the screen. If you land too hard, or at a bad angle, you’ll crash! Your fuel is limited, so plan your descent and throttle carefully!
+
+---
+
+## 🛰️ Fly-By-Wire Mode
+
+Fly-by-wire mode lets you pilot the lander like a modern spacecraft:
+
+- **Toggle Fly-By-Wire**: Press the `A` key to switch between manual and fly-by-wire mode at any time.
+- **Automatic Throttle & Angle**: In fly-by-wire mode, the lander automatically adjusts its throttle and angle to reach your target vertical and horizontal velocities using a smart controller.
+- **Set Target Velocities**: Use the arrow keys to increment your goal vertical (`goalVy`) and horizontal (`goalVx`) velocities:
+    - **Up/Down**: Increase/decrease target vertical speed
+    - **Left/Right**: Increase/decrease target horizontal speed
+- **Manual Override**: Switch back to manual mode (press `A` again) to regain full control over throttle and rotation. Your goal velocities will sync to your current velocities.
+
+Fly-by-wire is ideal for smooth, precise landings or for those who want to focus on strategy instead of fine motor control. Try switching modes mid-flight!
 
 ---
 

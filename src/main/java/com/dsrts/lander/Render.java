@@ -222,24 +222,17 @@ public class Render {
             GL11.glEnd();
         }
 
-        GL11.glPushMatrix();
-        GL11.glLoadIdentity();
-        GL11.glColor3f(1, 1, 1); // White text
-        // Format text with 1 decimal place
-        String hudText = String.format("Fuel: %.0f kg\nThrottle: %d%%\nVx: %.1f m/s\nVy: %.1f m/s",
-                lander.fuelMass,
-                Math.round(lander.throttle * 100),
-                lander.vx,
-                lander.vy);
-        // Draw each line of text
-        float x = Lander.SCREEN_WIDTH - 200; // 200 pixels from right edge
-        float y = 30; // 30 pixels from top
-        float lineHeight = 20;
-        for (String line : hudText.split("\n")) {
-            Lander.drawString(line, x, y);
-            y += lineHeight;
-        }
-        GL11.glPopMatrix();
+        // Draw HUD text (velocities, altitudes, fuel, throttle, goal values)
+        float textX = Lander.SCREEN_WIDTH - 250;
+        float textY = 40;
+        float lineHeight = 22;
+        Lander.drawString(String.format("Vy: %6.2f m/s", lander.vy), textX, textY);
+        Lander.drawString(String.format("Vx: %6.2f m/s", lander.vx), textX, textY + lineHeight);
+        Lander.drawString(String.format("Goal Vy: %6.2f m/s", lander.goalVy), textX, textY + 2 * lineHeight);
+        Lander.drawString(String.format("Goal Vx: %6.2f m/s", lander.goalVx), textX, textY + 3 * lineHeight);
+        Lander.drawString(String.format("Altitude: %6.2f m", lander.y), textX, textY + 4 * lineHeight);
+        Lander.drawString(String.format("Fuel: %6.1f kg", lander.fuelMass), textX, textY + 5 * lineHeight);
+        Lander.drawString(String.format("Throttle: %3d%%", (int)(lander.throttle * 100)), textX, textY + 6 * lineHeight);
     }
 
     // Renders the lander and its effects at its current position
@@ -321,7 +314,7 @@ public class Render {
         }
 
         // Draw side thruster gas (white, semi-transparent, flickering)
-        if (lander.fuelMass > 0 && lander.alive && !lander.landed && lander.space) {
+        if (lander.fuelMass > 0 && lander.alive && !lander.landed) {
             GL11.glEnable(GL11.GL_BLEND);
             GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
             float gasLength = bodyW * 1.3f + (float)Math.random() * bodyW * 0.4f;

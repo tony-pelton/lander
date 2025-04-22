@@ -2,11 +2,14 @@ package com.dsrts.lander;
 
 public class LanderState {
     public boolean up = false;
+    public boolean down = false;
     public boolean left = false;
     public boolean right = false;
     public boolean space = false;
     public float x, y; // meters
     public float vx = 0, vy = 0;  // m/s
+    public float goalVx = 0, goalVy = 0; // m/s, for fly-by-wire mode
+    public boolean flyByWireMode = false; // toggled by A key
     public float angle = 0;       // degrees
     // --- Tunable start state ---
     public static final float INITIAL_DESCENT_RATE = -4.0f; // m/s (downward)

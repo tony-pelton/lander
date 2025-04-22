@@ -73,6 +73,8 @@ public class Lander {
         long lastTime = System.nanoTime();
         double accumulator = 0.0;
         double dt = 1.0 / 60.0; // 60 FPS physics
+        // Track previous A key state for edge detection
+        boolean prevAPressed = false; // initialize before loop
 
         // Main loop
         while (!GLFW.glfwWindowShouldClose(window)) {
@@ -81,31 +83,44 @@ public class Lander {
             if (GLFW.glfwGetKey(window, GLFW.GLFW_KEY_ESCAPE) == GLFW.GLFW_PRESS) {
                 GLFW.glfwSetWindowShouldClose(window, true);
             }
-            boolean upPressed = GLFW.glfwGetKey(window, GLFW.GLFW_KEY_UP) == GLFW.GLFW_PRESS;
-            boolean downPressed = GLFW.glfwGetKey(window, GLFW.GLFW_KEY_DOWN) == GLFW.GLFW_PRESS;
+            lander.up = GLFW.glfwGetKey(window, GLFW.GLFW_KEY_UP) == GLFW.GLFW_PRESS;
+            lander.down = GLFW.glfwGetKey(window, GLFW.GLFW_KEY_DOWN) == GLFW.GLFW_PRESS;
             lander.left = GLFW.glfwGetKey(window, GLFW.GLFW_KEY_LEFT) == GLFW.GLFW_PRESS;
             lander.right = GLFW.glfwGetKey(window, GLFW.GLFW_KEY_RIGHT) == GLFW.GLFW_PRESS;
             lander.space = GLFW.glfwGetKey(window, GLFW.GLFW_KEY_SPACE) == GLFW.GLFW_PRESS;
 
-            // --- Throttle control ---
-            final float THROTTLE_CHANGE_RATE = 0.5f; // percent per second (0.5 = 50%/sec)
-            float throttleDelta = (float)(THROTTLE_CHANGE_RATE * accumulator); // accumulator is time since last physics update
-            if (upPressed) {
-                lander.throttle += throttleDelta;
+            // Toggle fly-by-wire mode with A key (on key press, edge detection)
+            boolean aPressed = GLFW.glfwGetKey(window, GLFW.GLFW_KEY_A) == GLFW.GLFW_PRESS;
+            if (aPressed && !prevAPressed) {
+                lander.flyByWireMode = !lander.flyByWireMode;
             }
-            if (downPressed) {
-                lander.throttle -= throttleDelta;
+
+            // Update goal velocities or sync them
+            float GOAL_INCREMENT = 0.2f; // m/s per key press
+            if (lander.flyByWireMode) {
+                if (lander.up) lander.goalVy += GOAL_INCREMENT;
+                if (lander.down) lander.goalVy -= GOAL_INCREMENT;
+                if (lander.left) lander.goalVx -= GOAL_INCREMENT;
+                if (lander.right) lander.goalVx += GOAL_INCREMENT;
+            } else {
+                // Manual mode: keep goals in sync with actual
+                lander.goalVx = lander.vx;
+                lander.goalVy = lander.vy;
             }
-            if (lander.throttle > 1.0f) lander.throttle = 1.0f;
-            if (lander.throttle < 0.0f) lander.throttle = 0.0f;
 
             // --- Physics (fixed timestep) ---
             long now = System.nanoTime();
             accumulator += (now - lastTime) / 1e9;
             lastTime = now;
             while (accumulator >= dt) {
+                // Update previous A key state at the end of each loop iteration
+                prevAPressed = aPressed;
                 if (lander.alive && !lander.landed) {
-                    Physics.advance(lander, dt);
+                    if (lander.flyByWireMode) {
+                        Physics.flybywire(lander, dt);
+                    } else {
+                        Physics.advance(lander, dt);
+                    }
                     // Camera follows lander (in meters)
                     camX = lander.x - (SCREEN_WIDTH / PIXELS_PER_METER_X) / 2f;
                     if (camX < 0)
@@ -121,10 +136,6 @@ public class Lander {
             // --- Render ---
             Render.renderScene(lander, camX);
 
-            // HUD
-            GL11.glColor3f(1, 1, 1);
-            GL11.glRasterPos2f(camX + 10, 30);
-            
             if (lander.landed) {
                 String msg = "LANDED! Press ESC to quit.";
                 float textWidth = msg.length() * 16; // crude estimate, adjust as needed
