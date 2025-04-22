@@ -115,7 +115,7 @@ public class Lander {
             while (accumulator >= dt) {
                 // Update previous A key state at the end of each loop iteration
                 prevAPressed = aPressed;
-                if (lander.alive && !lander.landed) {
+                if (lander.alive) {
                     if (lander.flyByWireMode) {
                         Physics.flybywire(lander, dt);
                     } else {

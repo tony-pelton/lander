@@ -27,6 +27,10 @@ public class Collision {
                 } else {
                     lander.alive = false;
                 }
+            } else {
+                if(lander.landed && lander.alive) {
+                    lander.landed = false;
+                }
             }
         }
     }
