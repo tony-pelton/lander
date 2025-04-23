@@ -95,10 +95,28 @@ public class Physics {
 
         // --- Throttle control (PID for vy) ---
         float vyError = lander.goalVy - lander.vy;
-        // Nonlinear P-controller: gain increases with error magnitude
-        float baseKp = 2.0f; // tune as needed
-        float nonlinearKp = baseKp * (1.0f + Math.abs(vyError));
-        lander.throttle += nonlinearKp * vyError * dt;
+        
+        // Calculate base throttle needed to hover at current mass
+        float mass = lander.getTotalMass();
+        float baseThrottle = 0.0f;
+        if(!lander.landed) {
+            baseThrottle = (GRAVITY * mass) / ENGINE_THRUST;
+        }
+        
+        // Strong P controller for velocity error
+        float Kp = 8.0f; // Increased gain significantly
+        float throttleAdjustment = Kp * vyError;
+        
+        // Add adjustment to base hover throttle
+        // Always include base hover throttle to counteract gravity
+        lander.throttle = baseThrottle + throttleAdjustment;
+        
+        // If falling significantly below goal velocity, apply full throttle
+        if (vyError > 2.0f) {
+            lander.throttle = 1.0f;
+        }
+        
+        // Clamp final throttle
         if (lander.throttle > 1.0f) lander.throttle = 1.0f;
         if (lander.throttle < 0.0f) lander.throttle = 0.0f;
 
@@ -131,7 +149,6 @@ public class Physics {
         float prevVy = lander.vy;
         if (lander.throttle > 0.0f && lander.fuelMass > 0) {
             float rad = (float)Math.toRadians(lander.angle);
-            float mass = lander.getTotalMass();
             float thrust = ENGINE_THRUST * lander.throttle;
             float ax = (float)Math.sin(rad) * thrust / mass;
             float ay = (float)Math.cos(rad) * thrust / mass;

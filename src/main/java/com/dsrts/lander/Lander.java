@@ -96,7 +96,7 @@ public class Lander {
             }
 
             // Update goal velocities or sync them
-            float GOAL_INCREMENT = 0.2f; // m/s per key press
+            float GOAL_INCREMENT = 0.1f; // m/s per key press
             if (lander.flyByWireMode) {
                 if (lander.up) lander.goalVy += GOAL_INCREMENT;
                 if (lander.down) lander.goalVy -= GOAL_INCREMENT;

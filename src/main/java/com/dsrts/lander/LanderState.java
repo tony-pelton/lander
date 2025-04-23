@@ -20,14 +20,14 @@ public class LanderState {
     public float verticalAccel = 0.0f;
     // Realistic mass/fuel
     public final float dryMass = 8200f; // kg
-    public float fuelMass = 8200f;      // kg (full)
+    public float fuelMass;      // kg (full)
     public float getTotalMass() { return dryMass + fuelMass; }
     public float throttle = 0.0f; // 0.0 = off, 1.0 = full thrust
     public boolean alive = true;
     public boolean landed = false;
 
     public LanderState(float[] terrainHeights, float WORLD_WIDTH_M, float WORLD_HEIGHT_M, float LANDER_WIDTH_M, float LANDER_HEIGHT_M, float LANDER_HALF_W, float LANDER_HALF_H) {
-        this.fuelMass = 8200f; // Reset to full at start
+        this.fuelMass = 8200f; // 8200 kg was the full fuel mass for the real lander
         this.vy = INITIAL_DESCENT_RATE;
         this.throttle = INITIAL_THROTTLE;
 

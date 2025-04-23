@@ -24,6 +24,10 @@ public class Collision {
                 }
                 if (onPad && Math.abs(lander.angle) < 10 && Math.abs(lander.vx) < 2 && Math.abs(lander.vy) < 2) {
                     lander.landed = true;
+                    lander.angle = 0.0f;
+                    lander.goalVx = 0.0f;
+                    lander.goalVy = 0.0f;
+                    lander.throttle = 0.0f;
                 } else {
                     lander.alive = false;
                 }

@@ -135,6 +135,32 @@ public class Render {
 
     // Draws distant objects in the sky (e.g., Earth)
     public static void drawObjects() {
+        // Draw distant galaxy to the left of Earth
+        float galaxyRadius = 44f;
+        float galaxyX = Lander.SCREEN_WIDTH * 0.35f;
+        float galaxyY = 75f;
+        int galaxySegments = 40;
+        GL11.glColor3f(0.8f, 0.6f, 1.0f); // galaxy color
+        GL11.glBegin(GL11.GL_LINE_LOOP);
+        for (int i = 0; i <= galaxySegments; i++) {
+            double theta = 2.0 * Math.PI * i / galaxySegments;
+            float dx = (float)Math.cos(theta) * galaxyRadius;
+            float dy = (float)Math.sin(theta) * galaxyRadius;
+            GL11.glVertex2f(galaxyX + dx, galaxyY + dy);
+        }
+        GL11.glEnd();
+        GL11.glPointSize(2.0f);
+        GL11.glBegin(GL11.GL_POINTS);
+        for (int i = 0; i < 30; i++) {
+            double angle = Math.random() * 2.0 * Math.PI;
+            double rad = (0.5 + Math.random() * 0.5) * galaxyRadius;
+            float sx = galaxyX + (float)Math.cos(angle) * (float)rad;
+            float sy = galaxyY + (float)Math.sin(angle) * (float)rad;
+            GL11.glColor3f(1.0f, 1.0f, 1.0f);
+            GL11.glVertex2f(sx, sy);
+        }
+        GL11.glEnd();
+
         // Draw distant Earth (high, right of center)
         float earthRadius = 22f;
         float earthX = Lander.SCREEN_WIDTH * 0.60f;
