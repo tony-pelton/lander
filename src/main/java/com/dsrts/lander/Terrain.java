@@ -5,18 +5,21 @@ public class Terrain {
     public static float[] terrainHeights = new float[4800];
 
     public static int[] padCenters = new int[] {
-        terrainHeights.length / 6,        // left third center
-        terrainHeights.length / 2,        // center
-        terrainHeights.length * 5 / 6     // right third center
+        terrainHeights.length / 7,        // First pad
+        terrainHeights.length * 2 / 7,    // Second pad
+        terrainHeights.length * 3 / 7,    // Third pad
+        terrainHeights.length * 4 / 7,    // Fourth pad
+        terrainHeights.length * 5 / 7,    // Fifth pad
+        terrainHeights.length * 6 / 7     // Sixth pad
     };
 
     public static int padWidth = 100; // Original pad width to maintain scale
 
     public static void generateTerrain() {
-        double base = 30; // meters above bottom
+        double base = 10; // meters above bottom
         int n = terrainHeights.length;
         int padCount = padCenters.length;
-        double mountainHeight = 40; // peak above base
+        // double mountainHeight = Math.random() * 100 + 20;
 
         // 1. Left edge to left pad (flat)
         int leftPadStart = padCenters[0] - padWidth / 2;
@@ -30,7 +33,8 @@ public class Terrain {
             int padBStart = padCenters[p+1] - padWidth / 2;
             int regionLen = padBStart - padAEnd;
             int mid = regionLen / 2;
-            double peak = base + mountainHeight;
+            // double peak = base + mountainHeight;
+            double peak = base + Math.random() * 50 + 20;
             // Left half: base to peak
             for (int i = 0; i <= mid; i++) {
                 int idx = padAEnd + i;

@@ -4,6 +4,75 @@ import org.lwjgl.opengl.GL11;
 
 public class Render {
 
+    // Static galaxy star positions to prevent flickering
+    private static final int GALAXY_STAR_COUNT = 30;
+    private static final float[] galaxyStarX = new float[GALAXY_STAR_COUNT];
+    private static final float[] galaxyStarY = new float[GALAXY_STAR_COUNT];
+    private static final int galaxyThird = (int)(Math.random() * 3); // Choose galaxy third at startup
+    private static float galaxyRotation = 0f; // Current rotation angle
+    private static final float GALAXY_ROTATION_SPEED = 10f; // Degrees per second
+    
+    // Background stars configuration
+    private static final int SMALL_STARS_COUNT = 75;
+    private static final int LARGE_STARS_COUNT = 25; // Roughly 3:1 ratio
+    private static final float[] smallStarX = new float[SMALL_STARS_COUNT];
+    private static final float[] smallStarY = new float[SMALL_STARS_COUNT];
+    private static final float[] largeStarX = new float[LARGE_STARS_COUNT];
+    private static final float[] largeStarY = new float[LARGE_STARS_COUNT];
+    private static final float LARGE_STAR_SIZE = 3.0f;
+    private static final float LARGE_STAR_INNER_SIZE = 1.5f;
+    
+    static {
+        // Initialize galaxy star positions once
+        for (int i = 0; i < GALAXY_STAR_COUNT; i++) {
+            double angle = Math.random() * 2.0 * Math.PI;
+            double rad = (0.5 + Math.random() * 0.5);
+            galaxyStarX[i] = (float)Math.cos(angle) * (float)rad;
+            galaxyStarY[i] = (float)Math.sin(angle) * (float)rad;
+        }
+
+        // Initialize background stars
+        float minClearance = 10.0f; // minimum meters above terrain
+        for (int i = 0; i < SMALL_STARS_COUNT; i++) {
+            smallStarX[i] = (float)(Math.random() * Lander.WORLD_WIDTH_M);
+            // Find terrain height at this x position
+            int terrainIndex = (int)(smallStarX[i] * Terrain.terrainHeights.length / Lander.WORLD_WIDTH_M);
+            float terrainHeight = Terrain.terrainHeights[terrainIndex];
+            // Place star between minClearance above terrain and world height
+            float availableHeight = Lander.WORLD_HEIGHT_M - (terrainHeight + minClearance);
+            smallStarY[i] = terrainHeight + minClearance + (float)(Math.random() * availableHeight);
+        }
+
+        for (int i = 0; i < LARGE_STARS_COUNT; i++) {
+            largeStarX[i] = (float)(Math.random() * Lander.WORLD_WIDTH_M);
+            // Find terrain height at this x position
+            int terrainIndex = (int)(largeStarX[i] * Terrain.terrainHeights.length / Lander.WORLD_WIDTH_M);
+            float terrainHeight = Terrain.terrainHeights[terrainIndex];
+            // Place star between minClearance above terrain and world height
+            float availableHeight = Lander.WORLD_HEIGHT_M - (terrainHeight + minClearance);
+            largeStarY[i] = terrainHeight + minClearance + (float)(Math.random() * availableHeight);
+        }
+    }
+
+    private static void drawLargeStar(float x, float y) {
+        // Draw the outer cross
+        GL11.glBegin(GL11.GL_LINES);
+        GL11.glVertex2f(x - LARGE_STAR_SIZE, y);
+        GL11.glVertex2f(x + LARGE_STAR_SIZE, y);
+        GL11.glVertex2f(x, y - LARGE_STAR_SIZE);
+        GL11.glVertex2f(x, y + LARGE_STAR_SIZE);
+        GL11.glEnd();
+        
+        // Draw the inner cross (45 degrees rotated)
+        GL11.glBegin(GL11.GL_LINES);
+        float diag = LARGE_STAR_INNER_SIZE * 0.707107f; // cos(45°)
+        GL11.glVertex2f(x - diag, y - diag);
+        GL11.glVertex2f(x + diag, y + diag);
+        GL11.glVertex2f(x - diag, y + diag);
+        GL11.glVertex2f(x + diag, y - diag);
+        GL11.glEnd();
+    }
+
     public static void renderScene(LanderState lander, float camX) {
         // --- Render ---
         GL11.glClearColor(0.05f, 0.05f, 0.08f, 1.0f);
@@ -16,17 +85,19 @@ public class Render {
         GL11.glMatrixMode(GL11.GL_MODELVIEW);
         GL11.glLoadIdentity();
 
+        drawStars();
+
         // Draw distant objects (e.g., Earth)
-        Render.drawObjects();
+        drawObjects();
 
         // Draw terrain and landing pad
-        Render.renderTerrain();
+        renderTerrain();
 
         // Draw HUD
-        Render.drawHud(lander);
+        drawHud(lander);
 
         // Draw lander (all parts, effects)
-        Render.renderLander(lander);
+        renderLander(lander);
     }
 
     public static void renderTerrain() {
@@ -59,37 +130,74 @@ public class Render {
         }
     }
 
+    public static void drawStars() {
+        // Draw background stars
+        GL11.glColor3f(0.8f, 0.8f, 0.9f);
+        // Small stars
+        GL11.glPointSize(1.0f);
+        GL11.glBegin(GL11.GL_POINTS);
+        for (int i = 0; i < SMALL_STARS_COUNT; i++) {
+            float x = smallStarX[i] * Lander.PIXELS_PER_METER_X;
+            float y = Lander.SCREEN_HEIGHT - smallStarY[i] * Lander.PIXELS_PER_METER_Y;
+            GL11.glVertex2f(x, y);
+        }
+        GL11.glEnd();
+
+        // Large stars
+        GL11.glLineWidth(1.0f);
+        for (int i = 0; i < LARGE_STARS_COUNT; i++) {
+            float x = largeStarX[i] * Lander.PIXELS_PER_METER_X;
+            float y = Lander.SCREEN_HEIGHT - largeStarY[i] * Lander.PIXELS_PER_METER_Y;
+            drawLargeStar(x, y);
+        }
+    }
     // Draws distant objects in the sky (e.g., Earth)
     public static void drawObjects() {
-        // Draw distant galaxy to the left of Earth
+        // Calculate terrain thirds for object placement
+        float thirdWidth = Lander.WORLD_WIDTH_M / 3f;
+        
+        // Position galaxy in center-left of chosen third
+        float galaxyX = (galaxyThird * thirdWidth + thirdWidth * 0.3f) * Lander.PIXELS_PER_METER_X;
         float galaxyRadius = 44f;
-        float galaxyX = Lander.SCREEN_WIDTH * 0.35f;
         float galaxyY = 75f;
         int galaxySegments = 40;
+
+        // Update galaxy rotation
+        float deltaTime = 1.0f / 60.0f; // Assuming 60 FPS, could be made more precise
+        galaxyRotation += GALAXY_ROTATION_SPEED * deltaTime;
+        if (galaxyRotation > 360f) galaxyRotation -= 360f;
+
+        // Save current matrix
+        GL11.glPushMatrix();
+        // Translate to galaxy center, rotate, then draw
+        GL11.glTranslatef(galaxyX, galaxyY, 0);
+        GL11.glRotatef(galaxyRotation, 0, 0, 1);
+        
         GL11.glColor3f(0.8f, 0.6f, 1.0f); // galaxy color
         GL11.glBegin(GL11.GL_LINE_LOOP);
         for (int i = 0; i <= galaxySegments; i++) {
             double theta = 2.0 * Math.PI * i / galaxySegments;
             float dx = (float)Math.cos(theta) * galaxyRadius;
             float dy = (float)Math.sin(theta) * galaxyRadius;
-            GL11.glVertex2f(galaxyX + dx, galaxyY + dy);
+            GL11.glVertex2f(dx, dy);
         }
         GL11.glEnd();
         GL11.glPointSize(2.0f);
         GL11.glBegin(GL11.GL_POINTS);
-        for (int i = 0; i < 30; i++) {
-            double angle = Math.random() * 2.0 * Math.PI;
-            double rad = (0.5 + Math.random() * 0.5) * galaxyRadius;
-            float sx = galaxyX + (float)Math.cos(angle) * (float)rad;
-            float sy = galaxyY + (float)Math.sin(angle) * (float)rad;
+        for (int i = 0; i < GALAXY_STAR_COUNT; i++) {
+            float sx = galaxyStarX[i] * galaxyRadius;
+            float sy = galaxyStarY[i] * galaxyRadius;
             GL11.glColor3f(1.0f, 1.0f, 1.0f);
             GL11.glVertex2f(sx, sy);
         }
         GL11.glEnd();
+        
+        // Restore matrix
+        GL11.glPopMatrix();
 
-        // Draw distant Earth (high, right of center)
+        // Draw distant Earth (centered in middle-upper right of center third)
         float earthRadius = 22f;
-        float earthX = Lander.SCREEN_WIDTH * 0.60f;
+        float earthX = (thirdWidth + thirdWidth * 0.7f) * Lander.PIXELS_PER_METER_X; // Position in center third
         float earthY = 54f;
         int numSegments = 40;
         // Draw Earth circle
@@ -121,6 +229,16 @@ public class Render {
 
     // Draws the HUD (fuel, throttle, velocities)
     public static void drawHud(LanderState lander) {
+        // Save current matrix and set up HUD coordinate space
+        GL11.glPushMatrix();
+        GL11.glLoadIdentity();
+        // Set up screen-space coordinates for HUD
+        GL11.glMatrixMode(GL11.GL_PROJECTION);
+        GL11.glPushMatrix();
+        GL11.glLoadIdentity();
+        GL11.glOrtho(0, Lander.SCREEN_WIDTH, Lander.SCREEN_HEIGHT, 0, -1, 1);
+        GL11.glMatrixMode(GL11.GL_MODELVIEW);
+
         // Draw vertical acceleration bar (left side, label above)
         float barX = 50;
         float barY = 50;
@@ -185,6 +303,12 @@ public class Render {
         Lander.drawString(String.format("Altitude: %6.2f m", lander.y), textX, textY + 4 * lineHeight);
         Lander.drawString(String.format("Fuel: %6.1f kg", lander.fuelMass), textX, textY + 5 * lineHeight);
         Lander.drawString(String.format("Throttle: %3d%%", (int)(lander.throttle * 100)), textX, textY + 6 * lineHeight);
+
+        // Restore previous matrix state
+        GL11.glMatrixMode(GL11.GL_PROJECTION);
+        GL11.glPopMatrix();
+        GL11.glMatrixMode(GL11.GL_MODELVIEW);
+        GL11.glPopMatrix();
     }
 
     // Renders the lander and its effects at its current position
