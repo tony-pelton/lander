@@ -65,8 +65,9 @@ public class Lander {
         GLFW.glfwShowWindow(window);
 
         // Game state
-        Render.generateTerrain();
-        LanderState lander = new LanderState(Render.terrainHeights, WORLD_WIDTH_M, WORLD_HEIGHT_M, LANDER_WIDTH_M,
+        Terrain.generateTerrain();
+
+        LanderState lander = new LanderState(Terrain.terrainHeights, WORLD_WIDTH_M, WORLD_HEIGHT_M, LANDER_WIDTH_M,
                 LANDER_HEIGHT_M, LANDER_HALF_W, LANDER_HALF_H);
 
         float camX = 0; // meters

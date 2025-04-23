@@ -3,62 +3,7 @@ package com.dsrts.lander;
 import org.lwjgl.opengl.GL11;
 
 public class Render {
-    // Terrain: 1600 samples, 1 sample per 0.15625m (250m/1600)
-    public static float[] terrainHeights = new float[1600];
-    public static void generateTerrain() {
-        double base = 30; // meters above bottom
-        int n = terrainHeights.length;
-        int padWidth = getPadWidth();
-        int[] padCenters = getPadCenters();
-        int padCount = padCenters.length;
-        double mountainHeight = 40; // peak above base
 
-        // 1. Left edge to left pad (flat)
-        int leftPadStart = padCenters[0] - padWidth / 2;
-        for (int i = 0; i < leftPadStart; i++) {
-            terrainHeights[i] = (float) base;
-        }
-
-        // 2. Between pads: mountain (parabola)
-        for (int p = 0; p < padCount - 1; p++) {
-            int padAEnd = padCenters[p] + padWidth / 2;
-            int padBStart = padCenters[p+1] - padWidth / 2;
-            int regionLen = padBStart - padAEnd;
-            int mid = regionLen / 2;
-            double peak = base + mountainHeight;
-            // Left half: base to peak
-            for (int i = 0; i <= mid; i++) {
-                int idx = padAEnd + i;
-                double t = (double)i / mid; // 0 to 1
-                double y = base + t * (peak - base);
-                terrainHeights[idx] = (float)y;
-            }
-            // Right half: peak to base
-            for (int i = mid + 1; i < regionLen; i++) {
-                int idx = padAEnd + i;
-                double t = (double)(i - mid) / (regionLen - 1 - mid); // 0 to 1
-                double y = peak + t * (base - peak);
-                terrainHeights[idx] = (float)y;
-            }
-        }
-
-        // 3. Right pad to right edge (flat)
-        int rightPadEnd = padCenters[padCount-1] + padWidth / 2;
-        for (int i = rightPadEnd; i < n; i++) {
-            terrainHeights[i] = (float) base;
-        }
-
-        // 4. Flatten pads
-        for (int c = 0; c < padCenters.length; c++) {
-            int start = padCenters[c] - padWidth / 2;
-            int end = padCenters[c] + padWidth / 2;
-            if (start < 0) start = 0;
-            if (end > n - 1) end = n - 1;
-            for (int i = start; i < end; i++) {
-                terrainHeights[i] = (float) base;
-            }
-        }
-    }
     public static void renderScene(LanderState lander, float camX) {
         // --- Render ---
         GL11.glClearColor(0.05f, 0.05f, 0.08f, 1.0f);
@@ -84,50 +29,31 @@ public class Render {
         Render.renderLander(lander);
     }
 
-    // Draws the terrain and landing pad
-    public static int getPadWidth() {
-        return 100;
-    }
-    public static int[] getPadCenters() {
-        int n = terrainHeights.length;
-        return new int[] {
-            n / 6,        // left third center
-            n / 2,        // center
-            n * 5 / 6     // right third center
-        };
-    }
-
     public static void renderTerrain() {
         // Draw terrain (white)
         GL11.glColor3f(1, 1, 1);
         GL11.glBegin(GL11.GL_LINE_STRIP);
-        for (int i = 0; i < terrainHeights.length; i++) {
-            GL11.glVertex2f(i * Lander.WORLD_WIDTH_M / terrainHeights.length * Lander.PIXELS_PER_METER_X,
-                    Lander.SCREEN_HEIGHT - terrainHeights[i] * Lander.PIXELS_PER_METER_Y);
+        for (int i = 0; i < Terrain.terrainHeights.length; i++) {
+            GL11.glVertex2f(i * Lander.WORLD_WIDTH_M / Terrain.terrainHeights.length * Lander.PIXELS_PER_METER_X,
+                    Lander.SCREEN_HEIGHT - Terrain.terrainHeights[i] * Lander.PIXELS_PER_METER_Y);
         }
         GL11.glEnd();
 
         // Draw landing pads (red)
         GL11.glColor3f(1, 0, 0);
-        int padWidth = 100; // same as original pad (700 - 600)
-        int n = terrainHeights.length;
 
-        // Define centers for left, center, right pads
-        int[] padCenters = new int[] {
-            n / 6,        // left third center
-            n / 2,        // center
-            n * 5 / 6     // right third center
-        };
-        for (int c = 0; c < padCenters.length; c++) {
-            int start = padCenters[c] - padWidth / 2;
-            int end = padCenters[c] + padWidth / 2;
+        int n = Terrain.terrainHeights.length;
+
+        for (int c = 0; c < Terrain.padCenters.length; c++) {
+            int start = Terrain.padCenters[c] - Terrain.padWidth / 2;
+            int end = Terrain.padCenters[c] + Terrain.padWidth / 2;
             // Clamp to valid range
             if (start < 0) start = 0;
             if (end > n - 1) end = n - 1;
             GL11.glBegin(GL11.GL_LINE_STRIP);
             for (int i = start; i < end; i++) {
                 GL11.glVertex2f(i * Lander.WORLD_WIDTH_M / n * Lander.PIXELS_PER_METER_X,
-                        Lander.SCREEN_HEIGHT - terrainHeights[i] * Lander.PIXELS_PER_METER_Y);
+                        Lander.SCREEN_HEIGHT - Terrain.terrainHeights[i] * Lander.PIXELS_PER_METER_Y);
             }
             GL11.glEnd();
         }
