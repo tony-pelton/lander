@@ -9,11 +9,11 @@ import org.lwjgl.system.MemoryUtil;
 
 public class Lander {
     // --- METRIC SCALE CONSTANTS ---
-    static final float WORLD_WIDTH_M = 250f; // World is 250 meters wide
+    static final float WORLD_WIDTH_M = 750f; // World is 750 meters wide (3 screens)
     static final float WORLD_HEIGHT_M = 150f; // World is 150 meters high (matches aspect ratio)
     static final int SCREEN_WIDTH = 1280;
     static final int SCREEN_HEIGHT = 768;
-    static final float PIXELS_PER_METER_X = SCREEN_WIDTH / WORLD_WIDTH_M; // ≈5.12 px/m
+    static final float PIXELS_PER_METER_X = (SCREEN_WIDTH * 3) / WORLD_WIDTH_M; // Keep original scale
     static final float PIXELS_PER_METER_Y = SCREEN_HEIGHT / WORLD_HEIGHT_M; // ≈5.12 px/m
     static final float LANDER_WIDTH_M = 5f;
     static final float LANDER_HEIGHT_M = 5f;
@@ -70,7 +70,8 @@ public class Lander {
         LanderState lander = new LanderState(Terrain.terrainHeights, WORLD_WIDTH_M, WORLD_HEIGHT_M, LANDER_WIDTH_M,
                 LANDER_HEIGHT_M, LANDER_HALF_W, LANDER_HALF_H);
 
-        float camX = 0; // meters
+        // Start camera in center of terrain
+        float camX = WORLD_WIDTH_M / 2f - (SCREEN_WIDTH / PIXELS_PER_METER_X) / 2f; // meters
         long lastTime = System.nanoTime();
         double accumulator = 0.0;
         double dt = 1.0 / 60.0; // 60 FPS physics
@@ -123,12 +124,15 @@ public class Lander {
                         Physics.advance(lander, dt);
                     }
                     // Camera follows lander (in meters)
-                    camX = lander.x - (SCREEN_WIDTH / PIXELS_PER_METER_X) / 2f;
-                    if (camX < 0)
-                        camX = 0;
+                    // Smoothly follow lander within world bounds
+                    float targetCamX = lander.x - (SCREEN_WIDTH / PIXELS_PER_METER_X) / 2f;
+                    // Clamp camera to world bounds
+                    float camMin = 0;
                     float camMax = WORLD_WIDTH_M - (SCREEN_WIDTH / PIXELS_PER_METER_X);
-                    if (camX > camMax)
-                        camX = camMax;
+                    if (targetCamX < camMin) targetCamX = camMin;
+                    if (targetCamX > camMax) targetCamX = camMax;
+                    // Move camera towards target with smooth interpolation
+                    camX = targetCamX; // Direct follow, no smoothing needed
                     Collision.collision(lander);
                 }
                 accumulator -= dt;

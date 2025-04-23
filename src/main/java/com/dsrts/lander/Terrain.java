@@ -1,8 +1,8 @@
 package com.dsrts.lander;
 
 public class Terrain {
-        // Terrain: 1600 samples, 1 sample per 0.15625m (250m/1600)
-    public static float[] terrainHeights = new float[1600];
+    // Terrain: 4800 samples, 1 sample per 0.15625m (750m/4800)
+    public static float[] terrainHeights = new float[4800];
 
     public static int[] padCenters = new int[] {
         terrainHeights.length / 6,        // left third center
@@ -10,10 +10,9 @@ public class Terrain {
         terrainHeights.length * 5 / 6     // right third center
     };
 
-    public static int padWidth = 100;
+    public static int padWidth = 100; // Original pad width to maintain scale
 
     public static void generateTerrain() {
-
         double base = 30; // meters above bottom
         int n = terrainHeights.length;
         int padCount = padCenters.length;
@@ -65,5 +64,4 @@ public class Terrain {
             }
         }
     }
-    
 }

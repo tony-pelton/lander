@@ -31,8 +31,8 @@ public class LanderState {
         this.vy = INITIAL_DESCENT_RATE;
         this.throttle = INITIAL_THROTTLE;
 
-        // Random horizontal position
-        x = (float)(Math.random() * (WORLD_WIDTH_M - LANDER_WIDTH_M)) + LANDER_HALF_W;
+        // Start in middle of terrain
+        x = WORLD_WIDTH_M / 2f;
         // Terrain sample index for x
         float terrainSample = x / (WORLD_WIDTH_M / terrainHeights.length);
         int tx = Math.round(terrainSample);
