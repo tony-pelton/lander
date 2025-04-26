@@ -23,18 +23,25 @@ public class Collision {
                     }
                 }
                 if (onPad && Math.abs(lander.angle) < 10 && Math.abs(lander.vx) < 2 && Math.abs(lander.vy) < 2) {
-                    lander.landed = true;
-                    lander.angle = 0.0f;
-                    lander.goalVx = 0.0f;
-                    lander.goalVy = 0.0f;
-                    lander.throttle = 0.0f;
+                    // If we're on a pad with correct orientation and speed, mark as landed
+                    if (!lander.landed) {
+                        lander.landed = true;
+                        lander.angle = 0.0f;
+                        lander.goalVx = 0.0f;
+                        lander.goalVy = 0.0f;
+                        lander.throttle = 0.0f;
+                    }
+                    
+                    // Allow takeoff when thrust is applied
+                    if (lander.throttle > 0.1f) {
+                        lander.landed = false;
+                    }
                 } else {
                     lander.alive = false;
                 }
             } else {
-                if(lander.landed && lander.alive) {
-                    lander.landed = false;
-                }
+                // If we're above the terrain, we're definitely not landed
+                lander.landed = false;
             }
         }
     }

@@ -3,7 +3,6 @@ package com.dsrts.lander;
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.glfw.GLFWErrorCallback;
 import org.lwjgl.opengl.GL;
-import org.lwjgl.opengl.GL11;
 import org.lwjgl.system.MemoryUtil;
 
 
@@ -19,22 +18,6 @@ public class Lander {
     static final float LANDER_HEIGHT_M = 5f;
     static final float LANDER_HALF_W = LANDER_WIDTH_M / 2;
     static final float LANDER_HALF_H = LANDER_HEIGHT_M / 2;
-
-    private static STBFontRenderer fontRenderer;
-
-    static void drawString(String text, float x, float y) {
-        if (fontRenderer == null) {
-            fontRenderer = new STBFontRenderer("/fonts/Roboto-Regular.ttf", 32f);
-        }
-        GL11.glEnable(GL11.GL_BLEND);
-        GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
-        GL11.glColor4f(1f, 1f, 1f, 1f);
-        GL11.glPushMatrix();
-        GL11.glTranslatef(x, y, 0);
-        fontRenderer.drawText(text, 0, 0, 1.0f, 1.0f);
-        GL11.glPopMatrix();
-        GL11.glDisable(GL11.GL_BLEND);
-    }
 
     public static void main(String[] args) {
         // Setup an error callback
@@ -146,13 +129,13 @@ public class Lander {
                 float textWidth = msg.length() * 16; // crude estimate, adjust as needed
                 float centerX = (SCREEN_WIDTH - textWidth) / 2f;
                 float centerY = SCREEN_HEIGHT / 2f;
-                drawString(msg, centerX, centerY);
+                Render.drawString(msg, centerX, centerY);
             } else if (!lander.alive) {
                 String msg = "CRASHED! Press ESC to quit.";
                 float textWidth = msg.length() * 16; // crude estimate, adjust as needed
                 float centerX = (SCREEN_WIDTH - textWidth) / 2f;
                 float centerY = SCREEN_HEIGHT / 2f;
-                drawString(msg, centerX, centerY);
+                Render.drawString(msg, centerX, centerY);
             }
 
             // Swap buffers

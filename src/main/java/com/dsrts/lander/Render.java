@@ -4,6 +4,8 @@ import org.lwjgl.opengl.GL11;
 
 public class Render {
 
+    private static STBFontRenderer fontRenderer;
+
     // Static galaxy star positions to prevent flickering
     private static final int GALAXY_STAR_COUNT = 30;
     private static final float[] galaxyStarX = new float[GALAXY_STAR_COUNT];
@@ -22,6 +24,13 @@ public class Render {
     private static final float LARGE_STAR_SIZE = 3.0f;
     private static final float LARGE_STAR_INNER_SIZE = 1.5f;
     
+    // Shooting star management
+    private static ShootingStar shootingStar = new ShootingStar();
+    private static float shootingStarTimer = 0f;
+    private static final float MIN_STAR_INTERVAL = 10f;  // Minimum seconds between stars
+    private static final float MAX_STAR_INTERVAL = 15f;  // Maximum seconds between stars
+    private static float nextStarTime = MIN_STAR_INTERVAL;  // Time until next star
+
     static {
         // Initialize galaxy star positions once
         for (int i = 0; i < GALAXY_STAR_COUNT; i++) {
@@ -54,6 +63,22 @@ public class Render {
         }
     }
 
+
+    public static void drawString(String text, float x, float y) {
+        if (fontRenderer == null) {
+            fontRenderer = new STBFontRenderer("/fonts/Roboto-Regular.ttf", 32f);
+        }
+        GL11.glEnable(GL11.GL_BLEND);
+        GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+        GL11.glColor4f(1f, 1f, 1f, 1f);
+        GL11.glPushMatrix();
+        GL11.glTranslatef(x, y, 0);
+        fontRenderer.drawText(text, 0, 0, 1.0f, 1.0f);
+        GL11.glPopMatrix();
+        GL11.glDisable(GL11.GL_BLEND);
+    }
+
+
     private static void drawLargeStar(float x, float y) {
         // Draw the outer cross
         GL11.glBegin(GL11.GL_LINES);
@@ -85,7 +110,19 @@ public class Render {
         GL11.glMatrixMode(GL11.GL_MODELVIEW);
         GL11.glLoadIdentity();
 
+        // Update shooting star
+        float dt = 1.0f / 60.0f;  // Assuming 60 FPS
+        shootingStarTimer += dt;
+        if (shootingStarTimer >= nextStarTime && !shootingStar.isActive()) {
+            shootingStar.spawn(lander.x);
+            shootingStarTimer = 0;
+            // Set random time for next star
+            nextStarTime = MIN_STAR_INTERVAL + (float)Math.random() * (MAX_STAR_INTERVAL - MIN_STAR_INTERVAL);
+        }
+        shootingStar.update(dt);
+
         drawStars();
+        shootingStar.render();
 
         // Draw distant objects (e.g., Earth)
         drawObjects();
@@ -100,7 +137,7 @@ public class Render {
         renderLander(lander);
     }
 
-    public static void renderTerrain() {
+    private static void renderTerrain() {
         // Draw terrain (white)
         GL11.glColor3f(1, 1, 1);
         GL11.glBegin(GL11.GL_LINE_STRIP);
@@ -130,7 +167,8 @@ public class Render {
         }
     }
 
-    public static void drawStars() {
+    private static void drawStars() {
+
         // Draw background stars
         GL11.glColor3f(0.8f, 0.8f, 0.9f);
         // Small stars
@@ -151,8 +189,9 @@ public class Render {
             drawLargeStar(x, y);
         }
     }
+
     // Draws distant objects in the sky (e.g., Earth)
-    public static void drawObjects() {
+    private static void drawObjects() {
         // Calculate terrain thirds for object placement
         float thirdWidth = Lander.WORLD_WIDTH_M / 3f;
         
@@ -228,7 +267,7 @@ public class Render {
     }
 
     // Draws the HUD (fuel, throttle, velocities)
-    public static void drawHud(LanderState lander) {
+    private static void drawHud(LanderState lander) {
         // Save current matrix and set up HUD coordinate space
         GL11.glPushMatrix();
         GL11.glLoadIdentity();
@@ -243,7 +282,7 @@ public class Render {
         float barX = 50;
         float barY = 50;
         // Draw label above the bar
-        Lander.drawString("dVy", barX - 14, barY - 28);
+        drawString("dVy", barX - 14, barY - 28);
         float barWidth = 18;
         float barHeight = 100;
         float halfBar = barHeight / 2f;
@@ -296,13 +335,13 @@ public class Render {
         float textX = Lander.SCREEN_WIDTH - 250;
         float textY = 40;
         float lineHeight = 22;
-        Lander.drawString(String.format("Vy: %6.2f m/s", lander.vy), textX, textY);
-        Lander.drawString(String.format("Vx: %6.2f m/s", lander.vx), textX, textY + lineHeight);
-        Lander.drawString(String.format("Goal Vy: %6.2f m/s", lander.goalVy), textX, textY + 2 * lineHeight);
-        Lander.drawString(String.format("Goal Vx: %6.2f m/s", lander.goalVx), textX, textY + 3 * lineHeight);
-        Lander.drawString(String.format("Altitude: %6.2f m", lander.y), textX, textY + 4 * lineHeight);
-        Lander.drawString(String.format("Fuel: %6.1f kg", lander.fuelMass), textX, textY + 5 * lineHeight);
-        Lander.drawString(String.format("Throttle: %3d%%", (int)(lander.throttle * 100)), textX, textY + 6 * lineHeight);
+        drawString(String.format("Vy: %6.2f m/s", lander.vy), textX, textY);
+        drawString(String.format("Vx: %6.2f m/s", lander.vx), textX, textY + lineHeight);
+        drawString(String.format("Goal Vy: %6.2f m/s", lander.goalVy), textX, textY + 2 * lineHeight);
+        drawString(String.format("Goal Vx: %6.2f m/s", lander.goalVx), textX, textY + 3 * lineHeight);
+        drawString(String.format("Altitude: %6.2f m", lander.y), textX, textY + 4 * lineHeight);
+        drawString(String.format("Fuel: %6.1f kg", lander.fuelMass), textX, textY + 5 * lineHeight);
+        drawString(String.format("Throttle: %3d%%", (int)(lander.throttle * 100)), textX, textY + 6 * lineHeight);
 
         // Restore previous matrix state
         GL11.glMatrixMode(GL11.GL_PROJECTION);
@@ -312,7 +351,7 @@ public class Render {
     }
 
     // Renders the lander and its effects at its current position
-    public static void renderLander(LanderState lander) {
+    private static void renderLander(LanderState lander) {
         GL11.glPushMatrix();
         float px = lander.x * Lander.PIXELS_PER_METER_X;
         float py = Lander.SCREEN_HEIGHT - lander.y * Lander.PIXELS_PER_METER_Y;
