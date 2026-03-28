@@ -1,5 +1,7 @@
 package com.dsrts.lander;
 
+import java.util.Objects;
+
 public class Collision {
     static void collision(LanderState lander) {
         // Collision
@@ -29,7 +31,6 @@ public class Collision {
                         lander.angle = 0.0f;
                         lander.goalVx = 0.0f;
                         lander.goalVy = 0.0f;
-                        lander.throttle = 0.0f;
                     }
                     
                     // Allow takeoff when thrust is applied
@@ -37,6 +38,7 @@ public class Collision {
                         lander.landed = false;
                     }
                 } else {
+                    System.out.println(Objects.toString("lander=" + lander, ""));
                     lander.alive = false;
                 }
             } else {

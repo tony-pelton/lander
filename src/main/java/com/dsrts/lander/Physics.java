@@ -46,11 +46,6 @@ public class Physics {
         if (lander.angle < -180) lander.angle += 360;
         // System.out.println("Angle: " + lander.angle);
         
-        // Clamp angle to [-180, 180] for sanity (optional)
-        if (lander.angle > 180) lander.angle -= 360;
-        if (lander.angle < -180) lander.angle += 360;
-
-        // System.out.println("Angle: " + lander.angle);
         // Thrust (main engine, now throttle-based)
         if (lander.throttle > 0.0f && lander.fuelMass > 0) {
             float rad = (float)Math.toRadians(lander.angle);

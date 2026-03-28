@@ -61,6 +61,25 @@ public class STBFontRenderer {
         GL11.glDisable(GL11.GL_TEXTURE_2D);
     }
 
+    public float getTextWidth(String text, float scale) {
+        float width = 0;
+        try (MemoryStack stack = MemoryStack.stackPush()) {
+            FloatBuffer xb = stack.floats(0);
+            FloatBuffer yb = stack.floats(0);
+            STBTTAlignedQuad q = STBTTAlignedQuad.malloc(stack);
+
+            for (int i = 0; i < text.length(); i++) {
+                char c = text.charAt(i);
+                if (c == '\n') {
+                    break; 
+                }
+                STBTruetype.stbtt_GetBakedQuad(cdata, bW, bH, c - 32, xb, yb, q, true);
+            }
+            width = xb.get(0) * scale;
+        }
+        return width;
+    }
+
     private static ByteBuffer ioResourceToByteBuffer(String resource, int bufferSize) throws IOException {
         ByteBuffer buffer;
         try (InputStream source = STBFontRenderer.class.getResourceAsStream(resource)) {

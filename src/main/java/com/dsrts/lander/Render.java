@@ -131,10 +131,55 @@ public class Render {
         renderTerrain();
 
         // Draw HUD
-        drawHud(lander);
+        RenderHud.drawHud(lander);
 
         // Draw lander (all parts, effects)
         renderLander(lander);
+
+        // Draw endgame message if applicable
+        renderEndGameMessage(lander, camX);
+    }
+
+    private static void renderEndGameMessage(LanderState lander, float camX) {
+        String msg = null;
+        if (lander.landed) {
+            msg = "LANDED! Press ESC to quit.";
+        } else if (!lander.alive) {
+            msg = "CRASHED! Press ESC to quit.";
+        }
+
+        if (msg != null) {
+            if (fontRenderer == null) { // Ensure font renderer is initialized
+                fontRenderer = new STBFontRenderer("/fonts/Roboto-Regular.ttf", 32f);
+            }
+
+            float textWidth = fontRenderer.getTextWidth(msg, 1.0f);
+
+            // Calculate lander's center screen position
+            float landerScreenX = (lander.x - camX) * Lander.PIXELS_PER_METER_X;
+            float landerScreenY = Lander.SCREEN_HEIGHT - lander.y * Lander.PIXELS_PER_METER_Y;
+
+            float textX = landerScreenX - textWidth / 2;
+            // Place it above the lander.
+            float textY = landerScreenY - (Lander.LANDER_HEIGHT_M * Lander.PIXELS_PER_METER_Y / 2) - 40; // 40px above lander's top
+
+            // Use a separate projection for screen-space text rendering
+            GL11.glMatrixMode(GL11.GL_PROJECTION);
+            GL11.glPushMatrix();
+            GL11.glLoadIdentity();
+            GL11.glOrtho(0, Lander.SCREEN_WIDTH, Lander.SCREEN_HEIGHT, 0, -1, 1);
+            GL11.glMatrixMode(GL11.GL_MODELVIEW);
+            GL11.glPushMatrix();
+            GL11.glLoadIdentity();
+
+            drawString(msg, textX, textY);
+
+            // Restore previous matrix state
+            GL11.glMatrixMode(GL11.GL_PROJECTION);
+            GL11.glPopMatrix();
+            GL11.glMatrixMode(GL11.GL_MODELVIEW);
+            GL11.glPopMatrix();
+        }
     }
 
     private static void renderTerrain() {
@@ -264,90 +309,6 @@ public class Render {
         GL11.glVertex2f(earthX, earthY + earthRadius * 0.2f);
         GL11.glVertex2f(earthX - earthRadius * 0.1f, earthY);
         GL11.glEnd();
-    }
-
-    // Draws the HUD (fuel, throttle, velocities)
-    private static void drawHud(LanderState lander) {
-        // Save current matrix and set up HUD coordinate space
-        GL11.glPushMatrix();
-        GL11.glLoadIdentity();
-        // Set up screen-space coordinates for HUD
-        GL11.glMatrixMode(GL11.GL_PROJECTION);
-        GL11.glPushMatrix();
-        GL11.glLoadIdentity();
-        GL11.glOrtho(0, Lander.SCREEN_WIDTH, Lander.SCREEN_HEIGHT, 0, -1, 1);
-        GL11.glMatrixMode(GL11.GL_MODELVIEW);
-
-        // Draw vertical acceleration bar (left side, label above)
-        float barX = 50;
-        float barY = 50;
-        // Draw label above the bar
-        drawString("dVy", barX - 14, barY - 28);
-        float barWidth = 18;
-        float barHeight = 100;
-        float halfBar = barHeight / 2f;
-        // Compute vertical acceleration (rate of change of vy)
-        float verticalAccel = lander.verticalAccel;
-        // Clamp to [-5, 5] m/s^2
-        if (verticalAccel > 5) verticalAccel = 5;
-        if (verticalAccel < -5) verticalAccel = -5;
-        // Draw fixed white center line
-        float centerY = barY + halfBar;
-        GL11.glColor3f(1, 1, 1);
-        GL11.glLineWidth(3.0f);
-        GL11.glBegin(GL11.GL_LINES);
-        GL11.glVertex2f(barX - barWidth / 2 - 2, centerY);
-        GL11.glVertex2f(barX + barWidth / 2 + 2, centerY);
-        GL11.glEnd();
-        GL11.glLineWidth(1.0f);
-        // Draw white rectangle outline around the bar
-        GL11.glColor3f(1, 1, 1);
-        GL11.glBegin(GL11.GL_LINE_LOOP);
-        GL11.glVertex2f(barX - barWidth / 2, barY);
-        GL11.glVertex2f(barX + barWidth / 2, barY);
-        GL11.glVertex2f(barX + barWidth / 2, barY + barHeight);
-        GL11.glVertex2f(barX - barWidth / 2, barY + barHeight);
-        GL11.glEnd();
-        // Draw green fill for positive acceleration (up from center)
-        if (verticalAccel > 0.0f) {
-            float fillTop = centerY - (verticalAccel / 5.0f) * halfBar; // +5 m/s²: fillTop == barY
-            GL11.glColor3f(0, 1, 0);
-            GL11.glBegin(GL11.GL_QUADS);
-            GL11.glVertex2f(barX - barWidth / 2, fillTop);
-            GL11.glVertex2f(barX + barWidth / 2, fillTop);
-            GL11.glVertex2f(barX + barWidth / 2, centerY);
-            GL11.glVertex2f(barX - barWidth / 2, centerY);
-            GL11.glEnd();
-        }
-        // Draw red fill for negative acceleration (down from center)
-        if (verticalAccel < 0.0f) {
-            float fillBot = centerY - (verticalAccel / 5.0f) * halfBar; // -5 m/s²: fillBot == barY + barHeight
-            GL11.glColor3f(1, 0, 0);
-            GL11.glBegin(GL11.GL_QUADS);
-            GL11.glVertex2f(barX - barWidth / 2, centerY);
-            GL11.glVertex2f(barX + barWidth / 2, centerY);
-            GL11.glVertex2f(barX + barWidth / 2, fillBot);
-            GL11.glVertex2f(barX - barWidth / 2, fillBot);
-            GL11.glEnd();
-        }
-
-        // Draw HUD text (velocities, altitudes, fuel, throttle, goal values)
-        float textX = Lander.SCREEN_WIDTH - 250;
-        float textY = 40;
-        float lineHeight = 22;
-        drawString(String.format("Vy: %6.2f m/s", lander.vy), textX, textY);
-        drawString(String.format("Vx: %6.2f m/s", lander.vx), textX, textY + lineHeight);
-        drawString(String.format("Goal Vy: %6.2f m/s", lander.goalVy), textX, textY + 2 * lineHeight);
-        drawString(String.format("Goal Vx: %6.2f m/s", lander.goalVx), textX, textY + 3 * lineHeight);
-        drawString(String.format("Altitude: %6.2f m", lander.y), textX, textY + 4 * lineHeight);
-        drawString(String.format("Fuel: %6.1f kg", lander.fuelMass), textX, textY + 5 * lineHeight);
-        drawString(String.format("Throttle: %3d%%", (int)(lander.throttle * 100)), textX, textY + 6 * lineHeight);
-
-        // Restore previous matrix state
-        GL11.glMatrixMode(GL11.GL_PROJECTION);
-        GL11.glPopMatrix();
-        GL11.glMatrixMode(GL11.GL_MODELVIEW);
-        GL11.glPopMatrix();
     }
 
     // Renders the lander and its effects at its current position

@@ -124,20 +124,6 @@ public class Lander {
             // --- Render ---
             Render.renderScene(lander, camX);
 
-            if (lander.landed) {
-                String msg = "LANDED! Press ESC to quit.";
-                float textWidth = msg.length() * 16; // crude estimate, adjust as needed
-                float centerX = (SCREEN_WIDTH - textWidth) / 2f;
-                float centerY = SCREEN_HEIGHT / 2f;
-                Render.drawString(msg, centerX, centerY);
-            } else if (!lander.alive) {
-                String msg = "CRASHED! Press ESC to quit.";
-                float textWidth = msg.length() * 16; // crude estimate, adjust as needed
-                float centerX = (SCREEN_WIDTH - textWidth) / 2f;
-                float centerY = SCREEN_HEIGHT / 2f;
-                Render.drawString(msg, centerX, centerY);
-            }
-
             // Swap buffers
             GLFW.glfwSwapBuffers(window);
         }
