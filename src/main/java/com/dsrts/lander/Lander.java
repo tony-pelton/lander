@@ -10,7 +10,11 @@ import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.Body;
 import com.badlogic.gdx.physics.box2d.BodyDef;
+import com.badlogic.gdx.physics.box2d.Contact;
+import com.badlogic.gdx.physics.box2d.ContactImpulse;
+import com.badlogic.gdx.physics.box2d.ContactListener;
 import com.badlogic.gdx.physics.box2d.FixtureDef;
+import com.badlogic.gdx.physics.box2d.Manifold;
 import com.badlogic.gdx.physics.box2d.PolygonShape;
 import com.badlogic.gdx.physics.box2d.World;
 import com.badlogic.gdx.utils.ScreenUtils;
@@ -35,10 +39,10 @@ public class Lander extends ApplicationAdapter {
 
     @Override
     public void create() {
-        Terrain.generateTerrain();
-        
         // Initialize Box2D World with Moon Gravity
         world = new World(new Vector2(0, -1.62f), true);
+        
+        Terrain.generateTerrain(world, WORLD_WIDTH_M);
         
         lander = new LanderState(Terrain.terrainHeights, WORLD_WIDTH_M, WORLD_HEIGHT_M, LANDER_WIDTH_M,
                 LANDER_HEIGHT_M, LANDER_HALF_W, LANDER_HALF_H);
@@ -46,15 +50,54 @@ public class Lander extends ApplicationAdapter {
         // Create Lander Body
         lander.body = createLanderBody(world, lander.x, lander.y, lander.angle);
         
+        setupContactListener();
+        
         renderer = new Render();
         renderer.init(this);
+    }
+
+    private void setupContactListener() {
+        world.setContactListener(new ContactListener() {
+            @Override
+            public void beginContact(Contact contact) {
+                boolean isLander = contact.getFixtureA().getBody() == lander.body || contact.getFixtureB().getBody() == lander.body;
+                if (!isLander) return;
+
+                Object dataA = contact.getFixtureA().getUserData();
+                Object dataB = contact.getFixtureB().getUserData();
+                boolean hitPad = "pad".equals(dataA) || "pad".equals(dataB);
+                boolean hitTerrain = "terrain".equals(dataA) || "terrain".equals(dataB);
+
+                if (hitTerrain || hitPad) {
+                    // Check landing criteria
+                    float vel = lander.body.getLinearVelocity().len();
+                    float ang = Math.abs(lander.angle);
+                    
+                    if (hitPad && vel < 2.0f && ang < 10.0f) {
+                        lander.landed = true;
+                    } else if (!lander.landed) {
+                        lander.alive = false;
+                    }
+                }
+            }
+
+            @Override public void endContact(Contact contact) {
+                if (contact.getFixtureA().getBody() == lander.body || contact.getFixtureB().getBody() == lander.body) {
+                    if (lander.body.getLinearVelocity().y > 0.1f) {
+                        lander.landed = false;
+                    }
+                }
+            }
+            @Override public void preSolve(Contact contact, Manifold oldManifold) {}
+            @Override public void postSolve(Contact contact, ContactImpulse impulse) {}
+        });
     }
 
     private Body createLanderBody(World world, float x, float y, float angle) {
         BodyDef bodyDef = new BodyDef();
         bodyDef.type = BodyDef.BodyType.DynamicBody;
         bodyDef.position.set(x, y);
-        bodyDef.angle = -angle * MathUtils.degreesToRadians;
+        bodyDef.angle = angle * MathUtils.degreesToRadians;
         bodyDef.linearDamping = 0.0f;
         bodyDef.angularDamping = 0.0f; 
 
@@ -96,20 +139,29 @@ public class Lander extends ApplicationAdapter {
             lander.flyByWireMode = !lander.flyByWireMode;
             if (lander.flyByWireMode) {
                 // Sync goals to actual state when turning FBW ON
-                lander.goalVy = lander.vy;
-                // Snap goalAngle to the closest lower value divisible by ANGLE_INCREMENT
-                // This allows reaching 0.0 even if manual angle is e.g. 13.4
+                float currentVy = lander.vy;
+                if (Math.abs(currentVy) <= 0.5f) {
+                    lander.goalVy = Math.round(currentVy * 10f) / 10.0f;
+                } else {
+                    lander.goalVy = Math.round(currentVy * 2f) / 2.0f;
+                }
                 lander.goalAngle = (float)(Math.floor(lander.angle / ANGLE_INCREMENT) * ANGLE_INCREMENT);
             }
         }
 
         if (lander.flyByWireMode) {
-            if (Gdx.input.isKeyJustPressed(Input.Keys.UP)) lander.goalVy += GOAL_INCREMENT;
-            if (Gdx.input.isKeyJustPressed(Input.Keys.DOWN)) lander.goalVy -= GOAL_INCREMENT;
+            if (Gdx.input.isKeyJustPressed(Input.Keys.UP)) {
+                float vyInc = (lander.goalVy >= -0.49f && lander.goalVy < 0.5f) ? 0.1f : 0.5f;
+                lander.goalVy += vyInc;
+            }
+            if (Gdx.input.isKeyJustPressed(Input.Keys.DOWN)) {
+                float vyInc = (lander.goalVy > -0.5f && lander.goalVy <= 0.49f) ? 0.1f : 0.5f;
+                lander.goalVy -= vyInc;
+            }
             if (Gdx.input.isKeyJustPressed(Input.Keys.LEFT)) lander.goalAngle += ANGLE_INCREMENT;
             if (Gdx.input.isKeyJustPressed(Input.Keys.RIGHT)) lander.goalAngle -= ANGLE_INCREMENT;
         } else {
-            // Manual mode: keep goals updated for potential future FBW entry
+            // Manual mode: keep goals updated
             lander.goalVx = lander.vx;
             lander.goalVy = lander.vy;
             lander.goalAngle = lander.angle;
@@ -127,7 +179,6 @@ public class Lander extends ApplicationAdapter {
                 } else {
                     Physics.advance(lander, dt);
                 }
-                Collision.collision(lander);
             }
             accumulator -= dt;
         }
