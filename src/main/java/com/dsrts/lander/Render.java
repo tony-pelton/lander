@@ -352,39 +352,60 @@ public class Render {
         float screenW = hudViewport.getWorldWidth();
         float screenH = hudViewport.getWorldHeight();
         
+        // 1. Dashboard Background
+        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
+        shapeRenderer.setColor(0.1f, 0.1f, 0.15f, 1f);
+        shapeRenderer.rect(0, 0, screenW, screenH);
+        shapeRenderer.end();
+        
+        // Border Line
         shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
-        drawVerticalIndicator(50, screenH - 150, 18, 100, "dVy", lander.verticalAccel, 2.0f);
-        drawVerticalIndicator(120, screenH - 150, 18, 100, "Vy", lander.vy, 50.0f);
+        shapeRenderer.setColor(Color.GRAY);
+        shapeRenderer.line(0, 0, screenW, 0);
+        
+        // 2. Instruments (Left side)
+        float instrY = screenH / 2f;
+        drawCircularVVI(80, instrY, (screenH / 2f) - 10, lander.vy, 10.0f, lander.smoothedVerticalAccel, lander.flyByWireMode ? lander.goalVy : null);
+        drawVerticalIndicator(160, 10, 18, screenH - 35, "THR", lander.smoothedThrottle, 1.0f, false);
+        drawVerticalIndicator(230, 10, 18, screenH - 35, "FUEL", lander.fuelMass, LanderState.TOTAL_FUEL_MASS, false);
         shapeRenderer.end();
         
         batch.begin();
-        // Labels for indicators
-        font.draw(batch, "dVy", 50 - 15, screenH - 150 + 125);
-        font.draw(batch, "Vy", 120 - 10, screenH - 150 + 125);
+        // Instrument Labels
+        float vviTextX = 80 - 15;
+        float vviTextY = instrY + 25;
+        font.draw(batch, "VVI", vviTextX, vviTextY);
+        font.draw(batch, "THR", 160 - 15, screenH - 5);
+        font.draw(batch, "FUEL", 230 - 20, screenH - 5);
         
-        // Control Mode
+        // 3. Control Mode (Center-Left)
         font.setColor(lander.flyByWireMode ? Color.CYAN : Color.YELLOW);
-        font.draw(batch, lander.flyByWireMode ? "MODE: FBW" : "MODE: MANUAL", 40, screenH - 150 - 20);
+        font.draw(batch, lander.flyByWireMode ? "MODE: FBW" : "MODE: MANUAL", 280, screenH / 2f + 5);
         font.setColor(Color.WHITE);
 
-        float textX = screenW - 250;
-        float textY = screenH - 40;
-        float lineH = 25;
+        // 4. Status Text (Right side, horizontal layout)
+        float rightX = screenW - 10;
+        float textY = screenH / 2f + 5;
         
-        font.draw(batch, String.format("Vy: %6.2f m/s", lander.vy), textX, textY);
-        font.draw(batch, String.format("Vx: %6.2f m/s", lander.vx), textX, textY - lineH);
-        font.draw(batch, String.format("Goal Vy: %6.2f m/s", lander.goalVy), textX, textY - 2 * lineH);
-        font.draw(batch, String.format("Goal Ang: %6.1f deg", lander.goalAngle), textX, textY - 3 * lineH);
-        font.draw(batch, String.format("Altitude: %6.2f m", lander.y), textX, textY - 4 * lineH);
-        font.draw(batch, String.format("Fuel: %6.1f kg", lander.fuelMass), textX, textY - 5 * lineH);
-        font.draw(batch, String.format("Throttle: %3d%%", (int)(lander.throttle * 100)), textX, textY - 6 * lineH);
+        // We draw right-to-left
+        String alt = String.format("ALT: %6.1f m", lander.y);
+        String goal = lander.flyByWireMode ? 
+                      String.format("G-ANG: %3.0f°", lander.goalAngle) : "";
+        String vel = String.format("V: %+5.1f / %+5.1f", lander.vx, lander.vy);
+
+        // Calculate positions (approximate widths)
+        font.draw(batch, alt, rightX - 150, textY);
+        font.draw(batch, goal, rightX - 380, textY);
+        font.draw(batch, vel, rightX - 610, textY);
         
-        if (lander.landed) font.draw(batch, "LANDED! Press ESC to quit.", screenW/2 - 100, screenH/2);
-        else if (!lander.alive) font.draw(batch, "CRASHED! Press ESC to quit.", screenW/2 - 100, screenH/2);
+        // 5. Endgame Messages (Overlay on HUD or center)
+        if (lander.landed) font.draw(batch, "LANDED! Press ESC to quit.", screenW/2f - 100, screenH/2f + 5);
+        else if (!lander.alive) font.draw(batch, "CRASHED! Press ESC to quit.", screenW/2f - 100, screenH/2f + 5);
+        
         batch.end();
     }
 
-    private void drawVerticalIndicator(float x, float y, float width, float height, String label, float value, float maxValue) {
+    private void drawVerticalIndicator(float x, float y, float width, float height, String label, float value, float maxValue, boolean isVector) {
         float halfBar = height / 2f;
         float centerY = y + halfBar;
         
@@ -392,28 +413,97 @@ public class Render {
         shapeRenderer.set(ShapeRenderer.ShapeType.Line);
         shapeRenderer.setColor(Color.WHITE);
         shapeRenderer.rect(x - width / 2, y, width, height);
-        shapeRenderer.line(x - width / 2 - 2, centerY, x + width / 2 + 2, centerY);
+        
+        if (isVector) {
+            shapeRenderer.line(x - width / 2 - 2, centerY, x + width / 2 + 2, centerY);
+        }
         
         // Fill (Filled mode)
         if (value != 0) {
-            float v = MathUtils.clamp(value, -maxValue, maxValue);
-            float barH = (v / maxValue) * halfBar;
+            float v = MathUtils.clamp(value, isVector ? -maxValue : 0, maxValue);
             
             shapeRenderer.set(ShapeRenderer.ShapeType.Filled);
-            if (value > 0) shapeRenderer.setColor(Color.GREEN);
-            else shapeRenderer.setColor(Color.RED);
-            
-            if (barH > 0) {
-                shapeRenderer.rect(x - width / 2, centerY, width, barH);
+            if (isVector) {
+                if (value > 0) shapeRenderer.setColor(Color.GREEN);
+                else shapeRenderer.setColor(Color.RED);
+                
+                float barH = (v / maxValue) * halfBar;
+                if (barH > 0) {
+                    shapeRenderer.rect(x - width / 2, centerY, width, barH);
+                } else {
+                    shapeRenderer.rect(x - width / 2, centerY + barH, width, -barH);
+                }
             } else {
-                shapeRenderer.rect(x - width / 2, centerY + barH, width, -barH);
+                shapeRenderer.setColor(Color.CYAN);
+                float barH = (v / maxValue) * height;
+                shapeRenderer.rect(x - width / 2, y, width, barH);
             }
         }
     }
 
+    private void drawCircularVVI(float x, float y, float radius, float value, float maxValue, float trend, Float goal) {
+        // 1. Gauge Face
+        shapeRenderer.set(ShapeRenderer.ShapeType.Line);
+        shapeRenderer.setColor(Color.WHITE);
+        shapeRenderer.circle(x, y, radius, 30);
+        
+        // Ticks (every 2 units)
+        for (int i = 0; i < 10; i++) {
+            float angle = 180 - (i * 360f / 10f); // 0.0 is at 180 degrees (Left)
+            float innerR = radius - 5;
+            shapeRenderer.line(
+                x + MathUtils.cosDeg(angle) * innerR, y + MathUtils.sinDeg(angle) * innerR,
+                x + MathUtils.cosDeg(angle) * radius, y + MathUtils.sinDeg(angle) * radius
+            );
+        }
+
+        // 2. Trend Ribbon (Outer edge)
+        if (Math.abs(trend) > 0.01f) {
+            shapeRenderer.set(ShapeRenderer.ShapeType.Filled);
+            if (trend > 0) shapeRenderer.setColor(0, 1, 0, 0.5f);
+            else shapeRenderer.setColor(1, 0, 0, 0.5f);
+            
+            float startAngle = 180; // 0.0 is at 180
+            float sweep = -(trend / 2.0f) * 180f; // Scale 2m/s^2 to 180 degrees
+            shapeRenderer.arc(x, y, radius + 4, startAngle, sweep, 20);
+        }
+
+        // 3. Goal Caret (Inside edge)
+        if (goal != null) {
+            shapeRenderer.set(ShapeRenderer.ShapeType.Filled);
+            shapeRenderer.setColor(Color.CYAN);
+            float gAngle = 180 - (goal / maxValue) * 180f;
+            float rInner = radius - 8;
+            shapeRenderer.triangle(
+                x + MathUtils.cosDeg(gAngle) * radius, y + MathUtils.sinDeg(gAngle) * radius,
+                x + MathUtils.cosDeg(gAngle + 5) * rInner, y + MathUtils.sinDeg(gAngle + 5) * rInner,
+                x + MathUtils.cosDeg(gAngle - 5) * rInner, y + MathUtils.sinDeg(gAngle - 5) * rInner
+            );
+        }
+
+        // 4. Needle
+        shapeRenderer.set(ShapeRenderer.ShapeType.Line);
+        shapeRenderer.setColor(Color.YELLOW);
+        float needleAngle = 180 - (value / maxValue) * 180f; // 0 is 180, +maxValue is CCW
+        shapeRenderer.line(x, y, x + MathUtils.cosDeg(needleAngle) * (radius - 2), y + MathUtils.sinDeg(needleAngle) * (radius - 2));
+        
+        // Center cap
+        shapeRenderer.set(ShapeRenderer.ShapeType.Filled);
+        shapeRenderer.setColor(Color.WHITE);
+        shapeRenderer.circle(x, y, 3);
+    }
+
     public void resize(int width, int height) {
-        worldViewport.update(width, height);
-        hudViewport.update(width, height, true);
+        int hudHeight = (int)(height * 0.2f);
+        int worldHeight = height - hudHeight;
+        
+        // World Viewport: Bottom 80%
+        worldViewport.update(width, worldHeight, true);
+        worldViewport.setScreenBounds(0, 0, width, worldHeight);
+        
+        // HUD Viewport: Top 20%
+        hudViewport.update(width, hudHeight, true);
+        hudViewport.setScreenBounds(0, worldHeight, width, hudHeight);
     }
 
     public void dispose() {

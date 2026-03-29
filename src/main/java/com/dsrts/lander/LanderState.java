@@ -20,17 +20,25 @@ public class LanderState {
     
     // --- Tunable start state ---
     public static final float INITIAL_DESCENT_RATE = -4.0f; // m/s (downward)
-    // Approximate hover throttle: gravity * mass / thrust
-    public static final float INITIAL_THROTTLE = (1.62f * 16400f) / 44000f; // ~0.60
     // For HUD: previous vertical speed and vertical acceleration (rate of change of vy)
     public float prevVy = 0.0f;
     public float verticalAccel = 0.0f;
+    public float integralVyError = 0.0f; // For PID
+    public float derivativeVyError = 0.0f; // For PID
+    public float filteredVyError = 0.0f; // For PID
+    
+    // Smoothed values for HUD display
+    public float smoothedVerticalAccel = 0.0f;
+    public float smoothedThrottle = 0.0f;
 
-    // Realistic mass/fuel
-    public final float dryMass = 8200f; // kg
-    public final float totalFuelMass = 8200f + 2300f; // kg
+    // Realistic mass/fuel (Apollo Lunar Module Descent Stage approx)
+    public static final float DRY_MASS = 4214f;      // kg
+    public static final float TOTAL_FUEL_MASS = 10867f; // kg
     public float fuelMass;      // kg
     public float cargoMass = 0f;
+
+    // Approximate hover throttle: gravity * (dry + startFuel) / thrust
+    public static final float INITIAL_THROTTLE = (1.62f * (DRY_MASS + 1500f)) / 44000f;
 
     public float throttle = 0.0f; // 0.0 = off, 1.0 = full thrust
     public float throttleLeft = 0.0f;
@@ -40,7 +48,8 @@ public class LanderState {
     public boolean landed = false;
 
     public LanderState(float[] terrainHeights, float WORLD_WIDTH_M, float WORLD_HEIGHT_M, float LANDER_WIDTH_M, float LANDER_HEIGHT_M, float LANDER_HALF_W, float LANDER_HALF_H) {
-        this.fuelMass = 1000f; // 8200 kg was the full fuel mass for the real lander
+        this.fuelMass = 1500f; 
+        
         this.vy = INITIAL_DESCENT_RATE;
         this.throttle = INITIAL_THROTTLE;
 
@@ -66,7 +75,7 @@ public class LanderState {
         }
     }
 
-    public float getTotalMass() { return dryMass + fuelMass; }
+    public float getTotalMass() { return DRY_MASS + fuelMass + cargoMass; }
 
     @Override
     public String toString() {
@@ -87,7 +96,7 @@ public class LanderState {
         sb.append(", angle=").append(angle);
         sb.append(", prevVy=").append(prevVy);
         sb.append(", verticalAccel=").append(verticalAccel);
-        sb.append(", dryMass=").append(dryMass);
+        sb.append(", dryMass=").append(DRY_MASS);
         sb.append(", fuelMass=").append(fuelMass);
         sb.append(", throttle=").append(throttle);
         sb.append(", alive=").append(alive);
