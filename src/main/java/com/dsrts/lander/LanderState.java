@@ -10,8 +10,11 @@ public class LanderState {
     public float x, y; // meters
     public float vx = 0, vy = 0;  // m/s
     public float goalVx = 0, goalVy = 0; // m/s, for fly-by-wire mode
+    public float goalAngle = 0;          // degrees, for FBW attitude hold
     public boolean flyByWireMode = false; // toggled by A key
     public float angle = 0;       // degrees
+    public float omega = 0;       // degrees/s (angular velocity)
+    
     // --- Tunable start state ---
     public static final float INITIAL_DESCENT_RATE = -4.0f; // m/s (downward)
     // Approximate hover throttle: gravity * mass / thrust
@@ -27,6 +30,8 @@ public class LanderState {
     public float cargoMass = 0f;
 
     public float throttle = 0.0f; // 0.0 = off, 1.0 = full thrust
+    public float throttleLeft = 0.0f;
+    public float throttleRight = 0.0f;
 
     public boolean alive = true;
     public boolean landed = false;

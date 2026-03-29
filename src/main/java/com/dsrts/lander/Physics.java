@@ -1,24 +1,25 @@
 package com.dsrts.lander;
 
+import com.badlogic.gdx.math.MathUtils;
+
 public class Physics {
     /**
      * Advances the lander's physics by dt seconds, applying controls and updating state.
      * @param lander The lander state to update
-     * @param up True if up (main) thrust is applied
-     * @param left True if left rotation is applied
-     * @param right True if right rotation is applied
-     * @param space True if side thrust is applied
      * @param dt Time step in seconds
      */
     public static final float GRAVITY = 1.62f; // m/s^2 (moon gravity)
     public static final float ENGINE_THRUST = 44000f; // Newtons
     public static final float FUEL_BURN_RATE = 14.5f; // kg/s
-    public static final float ROTATE_SPEED = 20f; // deg/frame
-    public static final float SIDE_THRUST = 2.5f; // m/s^2 (side jets)
     public static final float THROTTLE_CHANGE_RATE = 0.5f; // percent per second (0.5 = 50%/sec)
     
+    // --- New Constants for Drone Physics ---
+    public static final float NACELLE_DIST = 3.5f; // Meters from center
+    public static final float MOMENT_OF_INERTIA = 40000f; // Resistance to rotation (kg*m^2)
+    public static final float ROTATION_CONTROL_AUTHORITY = 0.2f; // Differential throttle strength
+    public static final float FBW_ANGULAR_DAMPING = 1.2f; // Passive roll rate decay in FBW mode
+    
     public static void advance(LanderState lander, double dt) {
-        // System.out.println("advance");
         // --- Throttle control (manual) ---
         float throttleDelta = THROTTLE_CHANGE_RATE * (float)dt;
         if (lander.up) {
@@ -27,148 +28,139 @@ public class Physics {
         if (lander.down) {
             lander.throttle -= throttleDelta;
         }
-        if (lander.throttle > 1.0f) lander.throttle = 1.0f;
-        if (lander.throttle < 0.0f) lander.throttle = 0.0f;
+        lander.throttle = MathUtils.clamp(lander.throttle, 0f, 1f);
 
-        // Track previous vy for vertical acceleration HUD
-        float prevVy = lander.vy;
-        // --- Manual rotation: left/right keys directly control angle ---
-        if(!lander.space) {
-            if (lander.left) {
-                lander.angle -= ROTATE_SPEED * dt;
-            }
-            if (lander.right) {
-                lander.angle += ROTATE_SPEED * dt;
-            }
+        // --- Differential Thrust (Manual Rotation) ---
+        float leftThrust = lander.throttle;
+        float rightThrust = lander.throttle;
+        
+        if (lander.left) {
+            leftThrust -= ROTATION_CONTROL_AUTHORITY;
+            rightThrust += ROTATION_CONTROL_AUTHORITY;
         }
-        // Clamp angle to [-180, 180] for sanity (optional)
+        if (lander.right) {
+            leftThrust += ROTATION_CONTROL_AUTHORITY;
+            rightThrust -= ROTATION_CONTROL_AUTHORITY;
+        }
+        
+        // Clamp individual throttles (allowing bi-directional -1.0 to 1.0 eventually, 
+        // but for now 0.0 to 1.0 is safer for fuel)
+        leftThrust = MathUtils.clamp(leftThrust, -0.5f, 1.0f);
+        rightThrust = MathUtils.clamp(rightThrust, -0.5f, 1.0f);
+        
+        lander.throttleLeft = leftThrust;
+        lander.throttleRight = rightThrust;
+        
+        // --- Calculate Torque and Forces ---
+        float mass = lander.getTotalMass();
+        float fLeft = leftThrust * (ENGINE_THRUST / 2f);
+        float fRight = rightThrust * (ENGINE_THRUST / 2f);
+        
+        // Torque = (F_left - F_right) * d
+        // F_left > F_right -> Positive Torque -> Clockwise (Increasing Angle)
+        float torque = (fLeft - fRight) * NACELLE_DIST;
+        
+        // Angular Acceleration (alpha = torque / I)
+        // Note: angle is in degrees, so convert torque/I (rad/s^2) to degrees/s^2
+        float alpha = (torque / MOMENT_OF_INERTIA) * MathUtils.radiansToDegrees;
+        
+        // Update Angular Velocity and Angle
+        lander.omega += alpha * dt;
+        lander.angle += lander.omega * dt;
+        
+        // Clamp angle to [-180, 180]
         if (lander.angle > 180) lander.angle -= 360;
         if (lander.angle < -180) lander.angle += 360;
-        // System.out.println("Angle: " + lander.angle);
+
+        // --- Linear Physics ---
+        float prevVy = lander.vy;
+        float totalThrust = fLeft + fRight;
         
-        // Thrust (main engine, now throttle-based)
-        if (lander.throttle > 0.0f && lander.fuelMass > 0) {
-            float rad = (float)Math.toRadians(lander.angle);
-            float mass = lander.getTotalMass();
-            float thrust = ENGINE_THRUST * lander.throttle;
-            // Calculate acceleration from thrust (F = ma)
-            float ax = (float)Math.sin(rad) * thrust / mass;
-            float ay = (float)Math.cos(rad) * thrust / mass;
+        if (lander.fuelMass > 0) {
+            float rad = lander.angle * MathUtils.degreesToRadians;
+            // Acceleration from thrust (F = ma)
+            float ax = MathUtils.sin(rad) * totalThrust / mass;
+            float ay = MathUtils.cos(rad) * totalThrust / mass;
             lander.vx += ax * dt;
             lander.vy += ay * dt;
-            // Burn fuel proportional to throttle
-            float fuelUsed = FUEL_BURN_RATE * lander.throttle * (float)dt;
+            
+            // Fuel consumption based on absolute thrust used
+            float combinedThrottle = (Math.abs(leftThrust) + Math.abs(rightThrust)) / 2f;
+            float fuelUsed = FUEL_BURN_RATE * combinedThrottle * (float)dt;
             lander.fuelMass -= fuelUsed;
             if (lander.fuelMass < 0) lander.fuelMass = 0;
         }
-        // Side thrust (with left/right + space)
-        if (lander.space && lander.fuelMass > 0) {
-            if (lander.left) {
-                lander.vx -= SIDE_THRUST * dt;
-                // Optional: burn a small amount of fuel for side jets
-                lander.fuelMass -= 0.5f * FUEL_BURN_RATE * (float)dt;
-            }
-            if (lander.right) {
-                lander.vx += SIDE_THRUST * dt;
-                lander.fuelMass -= 0.5f * FUEL_BURN_RATE * (float)dt;
-            }
-            if (lander.fuelMass < 0) lander.fuelMass = 0;
-        }
-        // Gravity (pulls down)
+        
+        // Gravity
         lander.vy -= GRAVITY * dt;
+        
         // Update position
         lander.x += lander.vx * dt;
         lander.y += lander.vy * dt;
-        // Compute vertical acceleration (rate of change of vy)
+        
+        // HUD stats
         lander.verticalAccel = (lander.vy - prevVy) / (float)dt;
         lander.prevVy = prevVy;
     }
 
-    // Fly-by-wire mode: PID (P-only) control to achieve goalVx and goalVy
     public static void flybywire(LanderState lander, double dt) {
-        // System.out.println("flybywire");
-
-        // --- Throttle control (PID for vy) ---
-        float vyError = lander.goalVy - lander.vy;
-        
-        // Calculate base throttle needed to hover at current mass
         float mass = lander.getTotalMass();
-        float baseThrottle = 0.0f;
-        if(!lander.landed) {
-            baseThrottle = (GRAVITY * mass) / ENGINE_THRUST;
-        }
         
-        // Strong P controller for velocity error
-        float Kp = 8.0f; // Increased gain significantly
-        float throttleAdjustment = Kp * vyError;
+        // --- 1. Vertical Control (PID for throttle) ---
+        float vyError = lander.goalVy - lander.vy;
+        float baseThrottle = lander.landed ? 0f : (GRAVITY * mass) / ENGINE_THRUST;
+        float Kp_v = 8.0f;
+        lander.throttle = baseThrottle + Kp_v * vyError;
+        if (vyError > 2.0f) lander.throttle = 1.0f;
+        lander.throttle = MathUtils.clamp(lander.throttle, 0f, 1f);
+
+        // --- 3. Attitude Control (PD Attitude Hold) ---
+        // We use differential thrust to reach and hold lander.goalAngle
+        float angleError = lander.goalAngle - lander.angle;
+        float Kp_a = 0.05f; // Gain for angle correction
+        float Kd_a = 0.02f; // Gain for angular velocity damping
         
-        // Add adjustment to base hover throttle
-        // Always include base hover throttle to counteract gravity
-        lander.throttle = baseThrottle + throttleAdjustment;
+        float diffCommand = (angleError * Kp_a) - (lander.omega * Kd_a);
         
-        // If falling significantly below goal velocity, apply full throttle
-        if (vyError > 2.0f) {
-            lander.throttle = 1.0f;
-        }
+        float leftThrust = lander.throttle + diffCommand;
+        float rightThrust = lander.throttle - diffCommand;
         
-        // Clamp final throttle
-        if (lander.throttle > 1.0f) lander.throttle = 1.0f;
-        if (lander.throttle < 0.0f) lander.throttle = 0.0f;
+        leftThrust = MathUtils.clamp(leftThrust, -0.5f, 1.0f);
+        rightThrust = MathUtils.clamp(rightThrust, -0.5f, 1.0f);
 
-        // --- Side thrust (PID for vx) ---
-        float vxError = lander.goalVx - lander.vx;
+        lander.throttleLeft = leftThrust;
+        lander.throttleRight = rightThrust;
 
-        // Use left/right keys to increment goalVx, but here we just control
-        // Use side thrusters to minimize vx error
-        if (lander.fuelMass > 0) {
-            if (vxError > 0.2f) {
-                // Need to go right
-                lander.right = true;
-                lander.left = false;
-            } else if (vxError < -0.2f) {
-                // Need to go left
-                lander.left = true;
-                lander.right = false;
-            } else {
-                lander.left = false;
-                lander.right = false;
-            }
-        }
-
-        // --- Angle control in flybywire: P-controller to keep angle at 0 ---
-        float angleError = 0.0f - lander.angle; // target is 0 degrees
-        float Kp_angle = 0.2f; // Tune as needed for responsiveness
-        float angleCorrection = Kp_angle * angleError;
-        lander.angle += angleCorrection * dt; // Adjust angle toward 0
-
+        // --- 4. Physics Integration ---
+        float fLeft = leftThrust * (ENGINE_THRUST / 2f);
+        float fRight = rightThrust * (ENGINE_THRUST / 2f);
+        // Torque = (F_left - F_right) * d
+        float torque = (fLeft - fRight) * NACELLE_DIST;
+        float alpha = (torque / MOMENT_OF_INERTIA) * MathUtils.radiansToDegrees;
+        
+        lander.omega += alpha * dt;
+        // Apply passive damping to roll rate
+        lander.omega *= (1.0f - FBW_ANGULAR_DAMPING * (float)dt);
+        
+        lander.angle += lander.omega * dt;
+        
         float prevVy = lander.vy;
-        if (lander.throttle > 0.0f && lander.fuelMass > 0) {
-            float rad = (float)Math.toRadians(lander.angle);
-            float thrust = ENGINE_THRUST * lander.throttle;
-            float ax = (float)Math.sin(rad) * thrust / mass;
-            float ay = (float)Math.cos(rad) * thrust / mass;
+        float totalThrust = fLeft + fRight;
+        if (lander.fuelMass > 0) {
+            float rad = lander.angle * MathUtils.degreesToRadians;
+            float ax = MathUtils.sin(rad) * totalThrust / mass;
+            float ay = MathUtils.cos(rad) * totalThrust / mass;
             lander.vx += ax * dt;
             lander.vy += ay * dt;
-            float fuelUsed = FUEL_BURN_RATE * lander.throttle * (float)dt;
-            lander.fuelMass -= fuelUsed;
+            float combinedThrottle = (Math.abs(leftThrust) + Math.abs(rightThrust)) / 2f;
+            lander.fuelMass -= FUEL_BURN_RATE * combinedThrottle * (float)dt;
             if (lander.fuelMass < 0) lander.fuelMass = 0;
         }
-        if (lander.fuelMass > 0) {
-            if (lander.left) {
-                lander.vx -= SIDE_THRUST * dt;
-                lander.fuelMass -= 0.5f * FUEL_BURN_RATE * (float)dt;
-            }
-            if (lander.right) {
-                lander.vx += SIDE_THRUST * dt;
-                lander.fuelMass -= 0.5f * FUEL_BURN_RATE * (float)dt;
-            }
-            if (lander.fuelMass < 0) lander.fuelMass = 0;
-        }
+        
         lander.vy -= GRAVITY * dt;
         lander.x += lander.vx * dt;
         lander.y += lander.vy * dt;
         lander.verticalAccel = (lander.vy - prevVy) / (float)dt;
         lander.prevVy = prevVy;
     }
-
 }

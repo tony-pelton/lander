@@ -47,20 +47,31 @@ public class Lander extends ApplicationAdapter {
         lander.right = Gdx.input.isKeyPressed(Input.Keys.RIGHT);
         lander.space = Gdx.input.isKeyPressed(Input.Keys.SPACE);
 
+        // Toggle fly-by-wire mode with A key (on key press, edge detection)
+        float GOAL_INCREMENT = 0.5f; // Incremented per tap
+        float ANGLE_INCREMENT = 5.0f; // Degrees per tap
+
         if (Gdx.input.isKeyJustPressed(Input.Keys.A)) {
             lander.flyByWireMode = !lander.flyByWireMode;
+            if (lander.flyByWireMode) {
+                // Sync goals to actual state when turning FBW ON
+                lander.goalVy = lander.vy;
+                // Snap goalAngle to the closest lower value divisible by ANGLE_INCREMENT
+                // This allows reaching 0.0 even if manual angle is e.g. 13.4
+                lander.goalAngle = (float)(Math.floor(lander.angle / ANGLE_INCREMENT) * ANGLE_INCREMENT);
+            }
         }
 
-        // --- Goal Updates ---
-        float GOAL_INCREMENT = 0.1f;
         if (lander.flyByWireMode) {
-            if (lander.up) lander.goalVy += GOAL_INCREMENT;
-            if (lander.down) lander.goalVy -= GOAL_INCREMENT;
-            if (lander.left) lander.goalVx -= GOAL_INCREMENT;
-            if (lander.right) lander.goalVx += GOAL_INCREMENT;
+            if (Gdx.input.isKeyJustPressed(Input.Keys.UP)) lander.goalVy += GOAL_INCREMENT;
+            if (Gdx.input.isKeyJustPressed(Input.Keys.DOWN)) lander.goalVy -= GOAL_INCREMENT;
+            if (Gdx.input.isKeyJustPressed(Input.Keys.LEFT)) lander.goalAngle -= ANGLE_INCREMENT;
+            if (Gdx.input.isKeyJustPressed(Input.Keys.RIGHT)) lander.goalAngle += ANGLE_INCREMENT;
         } else {
+            // Manual mode: keep goals updated for potential future FBW entry
             lander.goalVx = lander.vx;
             lander.goalVy = lander.vy;
+            lander.goalAngle = lander.angle;
         }
 
         // --- Physics (Fixed Timestep) ---

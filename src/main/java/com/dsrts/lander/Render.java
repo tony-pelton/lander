@@ -265,10 +265,10 @@ public class Render {
         float bodyW = Lander.LANDER_HALF_W * 1.2f;
         float bodyH = Lander.LANDER_HALF_H * 0.9f;
         
-        // Body
+        // --- Central Body (Chassis) ---
         shapeRenderer.rect(-bodyW, -bodyH * 0.5f, bodyW * 2, bodyH);
 
-        // Cab
+        // --- Octagon Cab (Command Module) ---
         float cabRadius = bodyW * 0.5f;
         float cabCenterY = bodyH * 0.5f + cabRadius * (float)Math.cos(Math.PI/8);
         for (int i = 0; i < 8; i++) {
@@ -278,35 +278,61 @@ public class Render {
                                cabRadius * MathUtils.cos(theta2), cabRadius * MathUtils.sin(theta2) + cabCenterY);
         }
 
-        // Legs
+        // --- Side Nacelles (Thruster Housings) ---
+        float nacelleOffset = bodyW * 1.4f;
+        float nacelleW = bodyW * 0.4f;
+        float nacelleH = bodyH * 1.2f;
+        
+        // Left Nacelle
+        shapeRenderer.rect(-nacelleOffset - nacelleW/2, -nacelleH/2, nacelleW, nacelleH);
+        shapeRenderer.line(-nacelleOffset + nacelleW/2, 0, -bodyW, 0); // Strut
+        
+        // Right Nacelle
+        shapeRenderer.rect(nacelleOffset - nacelleW/2, -nacelleH/2, nacelleW, nacelleH);
+        shapeRenderer.line(nacelleOffset - nacelleW/2, 0, bodyW, 0); // Strut
+
+        // --- Landing Gear (Legs) ---
         float legLen = bodyH * 1.2f;
-        float legSpread = bodyW * 0.8f;
         float baseY = -bodyH * 0.5f;
         float legAngle = (float) Math.toRadians(30);
         float sinA = MathUtils.sin(legAngle);
         float cosA = MathUtils.cos(legAngle);
 
-        shapeRenderer.line(-legSpread, baseY, -legSpread - legLen * sinA, baseY - legLen * cosA);
-        shapeRenderer.line(legSpread, baseY, legSpread + legLen * sinA, baseY - legLen * cosA);
-        shapeRenderer.line(-legSpread * 0.6f, baseY, -legSpread * 0.6f - legLen * 0.5f * sinA, baseY - legLen * 0.7f * cosA);
-        shapeRenderer.line(legSpread * 0.6f, baseY, legSpread * 0.6f + legLen * 0.5f * sinA, baseY - legLen * 0.7f * cosA);
+        shapeRenderer.line(-bodyW, baseY, -bodyW - legLen * sinA, baseY - legLen * cosA); // Inner Left
+        shapeRenderer.line(bodyW, baseY, bodyW + legLen * sinA, baseY - legLen * cosA);   // Inner Right
+        shapeRenderer.line(-nacelleOffset, -nacelleH/2, -nacelleOffset - legLen * 0.5f * sinA, -nacelleH/2 - legLen * 0.8f * cosA); // Outer Left
+        shapeRenderer.line(nacelleOffset, -nacelleH/2, nacelleOffset + legLen * 0.5f * sinA, -nacelleH/2 - legLen * 0.8f * cosA);   // Outer Right
 
-        // Flames & RCS
+        // --- Quad Thruster Flames (Bidirectional) ---
         if (lander.fuelMass > 0 && lander.alive && !lander.landed) {
             shapeRenderer.end();
             shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
             
-            if (lander.throttle > 0.0f) {
-                shapeRenderer.setColor(1, 0.6f, 0, 1);
-                float fH = (legLen * 0.2f + lander.throttle * legLen * 0.6f) + MathUtils.random(2f) * lander.throttle;
-                shapeRenderer.triangle(-bodyW * 0.4f, baseY, bodyW * 0.4f, baseY, 0, baseY - fH);
+            // Left Nacelle
+            float tL = lander.throttleLeft;
+            if (Math.abs(tL) > 0.05f) {
+                if (tL > 0) shapeRenderer.setColor(1, 0.6f, 0, 1); // Downward flame
+                else shapeRenderer.setColor(0.3f, 0.5f, 1, 0.8f);   // Upward flame (blueish)
+                
+                float fH = (legLen * 0.2f + Math.abs(tL) * legLen * 0.6f) + MathUtils.random(2f) * Math.abs(tL);
+                float sign = tL > 0 ? -1 : 1;
+                shapeRenderer.triangle(-nacelleOffset - nacelleW/2, sign * nacelleH/2, 
+                                       -nacelleOffset + nacelleW/2, sign * nacelleH/2, 
+                                       -nacelleOffset, sign * (nacelleH/2 + fH));
             }
             
-            shapeRenderer.setColor(1, 1, 1, 0.6f);
-            float gasL = bodyW * (1.3f + MathUtils.random(0.4f));
-            float gasW = bodyH * (0.3f + MathUtils.random(0.2f));
-            if (lander.left) shapeRenderer.triangle(bodyW, 0, bodyW + gasL, -gasW, bodyW + gasL, gasW);
-            if (lander.right) shapeRenderer.triangle(-bodyW, 0, -bodyW - gasL, -gasW, -bodyW - gasL, gasW);
+            // Right Nacelle
+            float tR = lander.throttleRight;
+            if (Math.abs(tR) > 0.05f) {
+                if (tR > 0) shapeRenderer.setColor(1, 0.6f, 0, 1);
+                else shapeRenderer.setColor(0.3f, 0.5f, 1, 0.8f);
+                
+                float fH = (legLen * 0.2f + Math.abs(tR) * legLen * 0.6f) + MathUtils.random(2f) * Math.abs(tR);
+                float sign = tR > 0 ? -1 : 1;
+                shapeRenderer.triangle(nacelleOffset - nacelleW/2, sign * nacelleH/2, 
+                                       nacelleOffset + nacelleW/2, sign * nacelleH/2, 
+                                       nacelleOffset, sign * (nacelleH/2 + fH));
+            }
             
             shapeRenderer.end();
             shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
@@ -329,6 +355,11 @@ public class Render {
         // Labels for indicators
         font.draw(batch, "dVy", 50 - 15, screenH - 150 + 125);
         font.draw(batch, "Vy", 120 - 10, screenH - 150 + 125);
+        
+        // Control Mode
+        font.setColor(lander.flyByWireMode ? Color.CYAN : Color.YELLOW);
+        font.draw(batch, lander.flyByWireMode ? "MODE: FBW" : "MODE: MANUAL", 40, screenH - 150 - 20);
+        font.setColor(Color.WHITE);
 
         float textX = screenW - 250;
         float textY = screenH - 40;
@@ -337,7 +368,7 @@ public class Render {
         font.draw(batch, String.format("Vy: %6.2f m/s", lander.vy), textX, textY);
         font.draw(batch, String.format("Vx: %6.2f m/s", lander.vx), textX, textY - lineH);
         font.draw(batch, String.format("Goal Vy: %6.2f m/s", lander.goalVy), textX, textY - 2 * lineH);
-        font.draw(batch, String.format("Goal Vx: %6.2f m/s", lander.goalVx), textX, textY - 3 * lineH);
+        font.draw(batch, String.format("Goal Ang: %6.1f deg", lander.goalAngle), textX, textY - 3 * lineH);
         font.draw(batch, String.format("Altitude: %6.2f m", lander.y), textX, textY - 4 * lineH);
         font.draw(batch, String.format("Fuel: %6.1f kg", lander.fuelMass), textX, textY - 5 * lineH);
         font.draw(batch, String.format("Throttle: %3d%%", (int)(lander.throttle * 100)), textX, textY - 6 * lineH);
