@@ -10,12 +10,14 @@ import com.badlogic.gdx.graphics.g2d.freetype.FreeTypeFontGenerator;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Matrix4;
+import com.badlogic.gdx.physics.box2d.Box2DDebugRenderer;
 import com.badlogic.gdx.utils.viewport.ExtendViewport;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 
 public class Render {
     private ShapeRenderer shapeRenderer;
+    private Box2DDebugRenderer debugRenderer;
     private SpriteBatch batch;
     private BitmapFont font;
     
@@ -46,6 +48,7 @@ public class Render {
     public void init(Lander landerApp) {
         shapeRenderer = new ShapeRenderer();
         shapeRenderer.setAutoShapeType(true);
+        debugRenderer = new Box2DDebugRenderer();
         batch = new SpriteBatch();
         
         // Font setup using FreeType
@@ -118,6 +121,9 @@ public class Render {
         shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
         drawDynamicWorld(lander);
         shapeRenderer.end();
+        
+        // Debug Physics (Optional overlay)
+        // debugRenderer.render(lander.body.getWorld(), worldCamera.combined);
         
         // --- 2. HUD Render ---
         hudViewport.apply();
@@ -254,8 +260,8 @@ public class Render {
         Matrix4 oldTransform = shapeRenderer.getTransformMatrix().cpy();
         Matrix4 newTransform = oldTransform.cpy();
         newTransform.translate(lander.x, lander.y, 0);
-        // Negate angle for clockwise physics -> counter-clockwise GDX
-        newTransform.rotate(0, 0, 1, -lander.angle);
+        // Use angle directly (CCW positive now)
+        newTransform.rotate(0, 0, 1, lander.angle);
         shapeRenderer.setTransformMatrix(newTransform);
 
         if (!lander.alive) shapeRenderer.setColor(Color.RED);
@@ -412,6 +418,7 @@ public class Render {
 
     public void dispose() {
         shapeRenderer.dispose();
+        if (debugRenderer != null) debugRenderer.dispose();
         batch.dispose();
         font.dispose();
     }

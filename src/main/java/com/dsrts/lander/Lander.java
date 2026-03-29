@@ -6,6 +6,13 @@ import com.badlogic.gdx.Input;
 import com.badlogic.gdx.backends.lwjgl3.Lwjgl3Application;
 import com.badlogic.gdx.backends.lwjgl3.Lwjgl3ApplicationConfiguration;
 import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.math.MathUtils;
+import com.badlogic.gdx.math.Vector2;
+import com.badlogic.gdx.physics.box2d.Body;
+import com.badlogic.gdx.physics.box2d.BodyDef;
+import com.badlogic.gdx.physics.box2d.FixtureDef;
+import com.badlogic.gdx.physics.box2d.PolygonShape;
+import com.badlogic.gdx.physics.box2d.World;
 import com.badlogic.gdx.utils.ScreenUtils;
 
 public class Lander extends ApplicationAdapter {
@@ -22,16 +29,50 @@ public class Lander extends ApplicationAdapter {
 
     private LanderState lander;
     private Render renderer;
+    private World world;
     private double accumulator = 0.0;
     private final double dt = 1.0 / 60.0;
 
     @Override
     public void create() {
         Terrain.generateTerrain();
+        
+        // Initialize Box2D World with Moon Gravity
+        world = new World(new Vector2(0, -1.62f), true);
+        
         lander = new LanderState(Terrain.terrainHeights, WORLD_WIDTH_M, WORLD_HEIGHT_M, LANDER_WIDTH_M,
                 LANDER_HEIGHT_M, LANDER_HALF_W, LANDER_HALF_H);
+        
+        // Create Lander Body
+        lander.body = createLanderBody(world, lander.x, lander.y, lander.angle);
+        
         renderer = new Render();
         renderer.init(this);
+    }
+
+    private Body createLanderBody(World world, float x, float y, float angle) {
+        BodyDef bodyDef = new BodyDef();
+        bodyDef.type = BodyDef.BodyType.DynamicBody;
+        bodyDef.position.set(x, y);
+        bodyDef.angle = -angle * MathUtils.degreesToRadians;
+        bodyDef.linearDamping = 0.0f;
+        bodyDef.angularDamping = 0.0f; 
+
+        Body body = world.createBody(bodyDef);
+
+        PolygonShape shape = new PolygonShape();
+        shape.setAsBox(LANDER_HALF_W, LANDER_HALF_H);
+
+        FixtureDef fixtureDef = new FixtureDef();
+        fixtureDef.shape = shape;
+        fixtureDef.density = 1.0f; 
+        fixtureDef.friction = 0.5f;
+        fixtureDef.restitution = 0.1f;
+
+        body.createFixture(fixtureDef);
+        shape.dispose();
+
+        return body;
     }
 
     @Override
@@ -65,8 +106,8 @@ public class Lander extends ApplicationAdapter {
         if (lander.flyByWireMode) {
             if (Gdx.input.isKeyJustPressed(Input.Keys.UP)) lander.goalVy += GOAL_INCREMENT;
             if (Gdx.input.isKeyJustPressed(Input.Keys.DOWN)) lander.goalVy -= GOAL_INCREMENT;
-            if (Gdx.input.isKeyJustPressed(Input.Keys.LEFT)) lander.goalAngle -= ANGLE_INCREMENT;
-            if (Gdx.input.isKeyJustPressed(Input.Keys.RIGHT)) lander.goalAngle += ANGLE_INCREMENT;
+            if (Gdx.input.isKeyJustPressed(Input.Keys.LEFT)) lander.goalAngle += ANGLE_INCREMENT;
+            if (Gdx.input.isKeyJustPressed(Input.Keys.RIGHT)) lander.goalAngle -= ANGLE_INCREMENT;
         } else {
             // Manual mode: keep goals updated for potential future FBW entry
             lander.goalVx = lander.vx;
@@ -78,6 +119,9 @@ public class Lander extends ApplicationAdapter {
         accumulator += Gdx.graphics.getDeltaTime();
         while (accumulator >= dt) {
             if (lander.alive) {
+                // Step Box2D World
+                world.step((float)dt, 6, 2);
+                
                 if (lander.flyByWireMode) {
                     Physics.flybywire(lander, dt);
                 } else {
@@ -101,6 +145,7 @@ public class Lander extends ApplicationAdapter {
     @Override
     public void dispose() {
         renderer.dispose();
+        if (world != null) world.dispose();
     }
 
     public static void main(String[] args) {

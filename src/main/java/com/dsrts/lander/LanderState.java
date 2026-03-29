@@ -1,6 +1,9 @@
 package com.dsrts.lander;
 
+import com.badlogic.gdx.physics.box2d.Body;
+
 public class LanderState {
+    public Body body; // Box2D body
     public boolean up = false;
     public boolean down = false;
     public boolean left = false;
